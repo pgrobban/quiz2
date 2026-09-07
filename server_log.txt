@@ -1,0 +1,37 @@
+
+> quiz-game-server@1.0.0 dev
+> tsx watch src/index.ts
+
+node:events:497
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at cors (C:\opt\surilica\server\src\index.ts:140:12)
+    at Object.<anonymous> (C:\opt\surilica\server\src\index.ts:142:2)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at Object.transformer (C:\opt\surilica\node_modules\tsx\dist\register-OY9cqBEN.cjs:9:3619)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1976:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v22.21.0
+10:51:09 [tsx] change in ./src\index.ts Rerunning...
+Quiz game server listening on http://localhost:4000
+socket connected: wC_wghHNlFF227rnAAAA
+socket connected: x0-6xNUmoCUU2b0gAAAB
+socket connected: dkWrU039Qxkcx1TiAAAC
+socket connected: tm3B3OBcKnjbdVc-AAAD
+socket connected: eQnC3wLlsRAZF6KzAAAE
