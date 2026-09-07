@@ -18,7 +18,13 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import type { Player, Question, RoomState } from "../../../shared/types";
 import { socket } from "../lib/socket";
 
-type ViewState = "form" | "joining" | "lobby" | "question" | "finished";
+type ViewState =
+  | "form"
+  | "joining"
+  | "lobby"
+  | "introduction"
+  | "question"
+  | "finished";
 
 export default function JoinPage() {
   const navigate = useNavigate();
@@ -36,7 +42,15 @@ export default function JoinPage() {
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
       setRoom(updatedRoom);
-      if (updatedRoom.phase === "lobby") setViewState("lobby");
+      if (updatedRoom.phase === "lobby") {
+        setQuestion(null);
+        setSelectedIndex(null);
+        setWasCorrect(null);
+        setCorrectIndex(null);
+        setViewState("lobby");
+      } else if (updatedRoom.phase === "introduction") {
+        setViewState("introduction");
+      }
     }
 
     function onQuestion(payload: { question: Question }) {
@@ -214,9 +228,21 @@ export default function JoinPage() {
               Room {room.code}
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 2 }}>
-              Waiting for the host to start the game...
+              Waiting for the host to start the next round...
             </Typography>
             <CircularProgress size={24} sx={{ mt: 2 }} />
+          </Paper>
+        )}
+
+        {viewState === "introduction" && room?.roundInfo && (
+          <Paper elevation={3} sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
+            <Typography variant="h5">{room.roundInfo.title}</Typography>
+            <Typography color="text.secondary" sx={{ mt: 1 }}>
+              {room.roundInfo.description}
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 2 }}>
+              Get ready - the host will start the questions shortly.
+            </Typography>
           </Paper>
         )}
 

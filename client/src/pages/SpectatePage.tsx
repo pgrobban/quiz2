@@ -37,6 +37,10 @@ export default function SpectatePage() {
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
       setRoom(updatedRoom);
+      if (updatedRoom.phase === "lobby") {
+        setQuestion(null);
+        setCorrectIndex(null);
+      }
     }
 
     function onQuestion(payload: { question: Question }) {
@@ -204,6 +208,33 @@ export default function SpectatePage() {
                     <Typography color="text.secondary">
                       {room.players.length} player
                       {room.players.length === 1 ? "" : "s"} ready
+                    </Typography>
+                  </Stack>
+                )}
+
+                {room.phase === "introduction" && room.roundInfo && (
+                  <Stack
+                    flexGrow={1}
+                    alignItems="center"
+                    justifyContent="center"
+                    spacing={2}
+                    textAlign="center"
+                  >
+                    <Typography variant="h4">{room.roundInfo.title}</Typography>
+                    <Typography color="text.secondary" sx={{ maxWidth: 480 }}>
+                      {room.roundInfo.description}
+                    </Typography>
+                    <Box
+                      component="img"
+                      src={room.roundInfo.tutorial.url}
+                      alt={`${room.roundInfo.title} tutorial`}
+                      sx={{ maxWidth: "100%", maxHeight: 260, borderRadius: 2 }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                    <Typography color="text.secondary" variant="body2">
+                      Get ready - questions start shortly!
                     </Typography>
                   </Stack>
                 )}

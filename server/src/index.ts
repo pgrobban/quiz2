@@ -66,6 +66,48 @@ io.on("connection", (socket) => {
     callback({ ok: true, room });
   });
 
+  socket.on("host:select-round", ({ code, round }, callback) => {
+    const room = rooms.getRoom(code);
+    if (!room || room.hostId !== socket.id) {
+      callback({ ok: false, error: "Not authorized." });
+      return;
+    }
+
+    const result = rooms.selectRound(code, round);
+    callback(result);
+    if (result.ok) {
+      io.to(code).emit("room:update", result.room);
+    }
+  });
+
+  socket.on("host:select-question", ({ code, questionIds }, callback) => {
+    const room = rooms.getRoom(code);
+    if (!room || room.hostId !== socket.id) {
+      callback({ ok: false, error: "Not authorized." });
+      return;
+    }
+
+    const result = rooms.selectQuestions(code, questionIds);
+    callback(result);
+    if (result.ok) {
+      io.to(code).emit("room:update", result.room);
+    }
+  });
+
+  socket.on("host:show-tutorial", ({ code }, callback) => {
+    const room = rooms.getRoom(code);
+    if (!room || room.hostId !== socket.id) {
+      callback({ ok: false, error: "Not authorized." });
+      return;
+    }
+
+    const result = rooms.showTutorial(code);
+    callback(result);
+    if (result.ok) {
+      io.to(code).emit("room:update", result.room);
+    }
+  });
+
   socket.on("player:join-room", ({ code, name }, callback) => {
     const trimmedName = name.trim();
     const room = rooms.getRoom(code);
@@ -75,7 +117,7 @@ io.on("connection", (socket) => {
       return;
     }
     if (room.phase !== "lobby") {
-      callback({ ok: false, error: "This game has already started." });
+      callback({ ok: false, error: "A round is currently in progress. Try again shortly." });
       return;
     }
     if (room.players.length >= MAX_PLAYERS_PER_ROOM) {
@@ -131,12 +173,12 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("host:start-game", ({ code }) => {
+  socket.on("host:start-question", ({ code }) => {
     const room = rooms.getRoom(code);
     if (!room || room.hostId !== socket.id) return;
 
     const result = rooms.startFirstQuestion(code);
-    if (!result) return;
+    if (!result.ok) return;
 
     io.to(code).emit("room:update", result.room);
     io.to(code).emit("game:question", {
@@ -169,8 +211,8 @@ io.on("connection", (socket) => {
     if (!result) return;
 
     io.to(code).emit("room:update", result.room);
-    if (result.finished) {
-      io.to(code).emit("game:finished", { players: result.room.players });
+    if (result.roundEnded) {
+      io.to(code).emit("game:round-ended", { players: result.room.players });
     } else if (result.question) {
       io.to(code).emit("game:question", {
         index: result.room.currentQuestionIndex,
@@ -178,6 +220,28 @@ io.on("connection", (socket) => {
         question: result.question,
       });
     }
+  });
+
+  socket.on("host:end-round", ({ code }) => {
+    const room = rooms.getRoom(code);
+    if (!room || room.hostId !== socket.id) return;
+
+    const updatedRoom = rooms.endRoundEarly(code);
+    if (!updatedRoom) return;
+
+    io.to(code).emit("room:update", updatedRoom);
+    io.to(code).emit("game:round-ended", { players: updatedRoom.players });
+  });
+
+  socket.on("host:finish-game", ({ code }) => {
+    const room = rooms.getRoom(code);
+    if (!room || room.hostId !== socket.id) return;
+
+    const updatedRoom = rooms.finishGame(code);
+    if (!updatedRoom) return;
+
+    io.to(code).emit("room:update", updatedRoom);
+    io.to(code).emit("game:finished", { players: updatedRoom.players });
   });
 
   socket.on("player:submit-answer", ({ code, optionIndex }, callback) => {

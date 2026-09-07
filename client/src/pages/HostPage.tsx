@@ -5,9 +5,15 @@ import {
   Avatar,
   Box,
   Button,
+  Card,
+  CardActionArea,
+  CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Container,
+  FormControlLabel,
+  Grid,
   List,
   ListItem,
   ListItemAvatar,
@@ -20,10 +26,26 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import SkipNextIcon from "@mui/icons-material/SkipNext";
-import type { Question, RoomState } from "../../../shared/types";
+import MovieIcon from "@mui/icons-material/Movie";
+import FlagIcon from "@mui/icons-material/Flag";
+import StopCircleIcon from "@mui/icons-material/StopCircle";
+import type {
+  GameRound,
+  Question,
+  QuestionBankItem,
+  RoomState,
+} from "../../../shared/types";
 import { socket } from "../lib/socket";
 
 type ConnectionState = "connecting" | "ready" | "error";
+
+const ROUND_OPTIONS: { id: GameRound; label: string }[] = [
+  { id: "quiz", label: "Standard Quiz" },
+  { id: "letters", label: "Letters Round" },
+  { id: "matching", label: "Matching Round" },
+  { id: "math", label: "Math Round" },
+  { id: "associations", label: "Associations Round" },
+];
 
 export default function HostPage() {
   const navigate = useNavigate();
@@ -33,6 +55,12 @@ export default function HostPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [question, setQuestion] = useState<Question | null>(null);
   const [correctIndex, setCorrectIndex] = useState<number | null>(null);
+
+  // Round/question selection (host-only, not part of shared room state).
+  const [availableQuestions, setAvailableQuestions] = useState<
+    QuestionBankItem[] | null
+  >(null);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
 
   useEffect(() => {
     socket.connect();
@@ -62,6 +90,13 @@ export default function HostPage() {
       setCorrectIndex(payload.correctIndex);
     }
 
+    function onRoundEnded() {
+      setQuestion(null);
+      setCorrectIndex(null);
+      setAvailableQuestions(null);
+      setSelectedQuestionIds([]);
+    }
+
     function onConnectError() {
       setErrorMessage("Could not connect to the game server.");
       setConnectionState("error");
@@ -71,6 +106,7 @@ export default function HostPage() {
     socket.on("room:update", onRoomUpdate);
     socket.on("game:question", onQuestion);
     socket.on("game:reveal", onReveal);
+    socket.on("game:round-ended", onRoundEnded);
     socket.on("connect_error", onConnectError);
 
     return () => {
@@ -78,14 +114,62 @@ export default function HostPage() {
       socket.off("room:update", onRoomUpdate);
       socket.off("game:question", onQuestion);
       socket.off("game:reveal", onReveal);
+      socket.off("game:round-ended", onRoundEnded);
       socket.off("connect_error", onConnectError);
       socket.disconnect();
     };
   }, []);
 
-  const handleStartGame = () => {
+  const handleSelectRound = (round: GameRound) => {
     if (!room) return;
-    socket.emit("host:start-game", { code: room.code });
+    socket.emit("host:select-round", { code: room.code, round }, (response) => {
+      if (response.ok) {
+        setRoom(response.room);
+        setAvailableQuestions(response.availableQuestions);
+        setSelectedQuestionIds(response.availableQuestions.map((q) => q.id));
+      } else {
+        setErrorMessage(response.error);
+      }
+    });
+  };
+
+  const toggleQuestion = (id: string) => {
+    setSelectedQuestionIds((prev) =>
+      prev.includes(id) ? prev.filter((qId) => qId !== id) : [...prev, id]
+    );
+  };
+
+  const handleConfirmQuestions = () => {
+    if (!room) return;
+    socket.emit(
+      "host:select-question",
+      { code: room.code, questionIds: selectedQuestionIds },
+      (response) => {
+        if (response.ok) {
+          setRoom(response.room);
+        } else {
+          setErrorMessage(response.error);
+        }
+      }
+    );
+  };
+
+  const handleChangeRound = () => {
+    setAvailableQuestions(null);
+    setSelectedQuestionIds([]);
+    if (room) setRoom({ ...room, round: null, roundInfo: null, totalQuestions: 0 });
+  };
+
+  const handleShowTutorial = () => {
+    if (!room) return;
+    socket.emit("host:show-tutorial", { code: room.code }, (response) => {
+      if (!response.ok) setErrorMessage(response.error);
+    });
+  };
+
+  const handleStartQuestions = () => {
+    if (!room) return;
+    socket.emit("host:start-question", { code: room.code });
   };
 
   const handleRevealAnswer = () => {
@@ -98,6 +182,16 @@ export default function HostPage() {
     socket.emit("host:next-question", { code: room.code });
   };
 
+  const handleEndRound = () => {
+    if (!room) return;
+    socket.emit("host:end-round", { code: room.code });
+  };
+
+  const handleFinishGame = () => {
+    if (!room) return;
+    socket.emit("host:finish-game", { code: room.code });
+  };
+
   const handleLeave = () => {
     navigate("/");
   };
@@ -108,6 +202,11 @@ export default function HostPage() {
 
   const isLastQuestion =
     !!room && room.currentQuestionIndex >= room.totalQuestions - 1;
+
+  const roundChosenButNoQuestions =
+    !!room && room.phase === "lobby" && !!room.round && room.totalQuestions === 0;
+  const readyToPlay =
+    !!room && room.phase === "lobby" && !!room.round && room.totalQuestions > 0;
 
   return (
     <Container maxWidth="sm">
@@ -160,6 +259,12 @@ export default function HostPage() {
               </Typography>
             </Paper>
 
+            {errorMessage && (
+              <Alert severity="error" onClose={() => setErrorMessage(null)}>
+                {errorMessage}
+              </Alert>
+            )}
+
             {room.phase === "lobby" && (
               <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
                 <Stack
@@ -191,6 +296,126 @@ export default function HostPage() {
               </Paper>
             )}
 
+            {room.phase === "lobby" && !room.round && (
+              <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Choose a Round
+                </Typography>
+                <Grid container spacing={1.5}>
+                  {ROUND_OPTIONS.map((option) => (
+                    <Grid item xs={6} key={option.id}>
+                      <Card variant="outlined">
+                        <CardActionArea onClick={() => handleSelectRound(option.id)}>
+                          <CardContent sx={{ textAlign: "center", py: 3 }}>
+                            <Typography variant="subtitle1">
+                              {option.label}
+                            </Typography>
+                          </CardContent>
+                        </CardActionArea>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Paper>
+            )}
+
+            {roundChosenButNoQuestions && availableQuestions && (
+              <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  sx={{ mb: 1 }}
+                >
+                  <Typography variant="h6">
+                    {room.roundInfo?.title}: Pick Questions
+                  </Typography>
+                  <Button size="small" onClick={handleChangeRound}>
+                    Change Round
+                  </Button>
+                </Stack>
+                <List dense>
+                  {availableQuestions.map((q) => (
+                    <ListItem key={q.id} disablePadding>
+                      <FormControlLabel
+                        sx={{ px: 1, width: "100%" }}
+                        control={
+                          <Checkbox
+                            checked={selectedQuestionIds.includes(q.id)}
+                            onChange={() => toggleQuestion(q.id)}
+                          />
+                        }
+                        label={q.text}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  disabled={selectedQuestionIds.length === 0}
+                  onClick={handleConfirmQuestions}
+                  sx={{ mt: 1 }}
+                >
+                  Confirm {selectedQuestionIds.length} Question
+                  {selectedQuestionIds.length === 1 ? "" : "s"}
+                </Button>
+              </Paper>
+            )}
+
+            {readyToPlay && (
+              <Paper elevation={1} sx={{ p: 2, borderRadius: 3, textAlign: "center" }}>
+                <Typography variant="h6">{room.roundInfo?.title}</Typography>
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  {room.totalQuestions} question
+                  {room.totalQuestions === 1 ? "" : "s"} selected
+                </Typography>
+                <Stack direction="row" spacing={1} justifyContent="center">
+                  <Button size="small" onClick={handleChangeRound}>
+                    Change Round
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<MovieIcon />}
+                    onClick={handleShowTutorial}
+                  >
+                    Show Tutorial
+                  </Button>
+                </Stack>
+              </Paper>
+            )}
+
+            {room.phase === "introduction" && room.roundInfo && (
+              <Paper elevation={1} sx={{ p: 3, borderRadius: 3, textAlign: "center" }}>
+                <Typography variant="h5">{room.roundInfo.title}</Typography>
+                <Typography color="text.secondary" sx={{ mt: 1, mb: 2 }}>
+                  {room.roundInfo.description}
+                </Typography>
+                <Box
+                  component="img"
+                  src={room.roundInfo.tutorial.url}
+                  alt={`${room.roundInfo.title} tutorial`}
+                  sx={{
+                    width: "100%",
+                    borderRadius: 2,
+                    bgcolor: "background.default",
+                    mb: 2,
+                  }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<PlayArrowIcon />}
+                  onClick={handleStartQuestions}
+                >
+                  Start Questions
+                </Button>
+              </Paper>
+            )}
+
             {(room.phase === "question" || room.phase === "reveal") &&
               question && (
                 <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
@@ -201,8 +426,8 @@ export default function HostPage() {
                     sx={{ mb: 2 }}
                   >
                     <Typography variant="overline" color="text.secondary">
-                      Question {room.currentQuestionIndex + 1} of{" "}
-                      {room.totalQuestions}
+                      {room.roundInfo?.title} · Question{" "}
+                      {room.currentQuestionIndex + 1} of {room.totalQuestions}
                     </Typography>
                     <Chip
                       size="small"
@@ -266,18 +491,6 @@ export default function HostPage() {
               </Paper>
             )}
 
-            {room.phase === "lobby" && (
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<PlayArrowIcon />}
-                disabled={room.players.length === 0}
-                onClick={handleStartGame}
-              >
-                Start Game
-              </Button>
-            )}
-
             {room.phase === "question" && (
               <Button
                 variant="contained"
@@ -296,7 +509,29 @@ export default function HostPage() {
                 startIcon={<SkipNextIcon />}
                 onClick={handleNextQuestion}
               >
-                {isLastQuestion ? "Show Final Results" : "Next Question"}
+                {isLastQuestion ? "End Round" : "Next Question"}
+              </Button>
+            )}
+
+            {(room.phase === "question" || room.phase === "reveal") && (
+              <Button
+                variant="text"
+                color="warning"
+                startIcon={<StopCircleIcon />}
+                onClick={handleEndRound}
+              >
+                End Round Early
+              </Button>
+            )}
+
+            {room.phase === "lobby" && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<FlagIcon />}
+                onClick={handleFinishGame}
+              >
+                Finish Game
               </Button>
             )}
           </>
