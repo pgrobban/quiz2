@@ -177,6 +177,14 @@ io.on("connection", (socket) => {
     const room = rooms.getRoom(code);
     if (!room || room.hostId !== socket.id) return;
 
+    if (room.round === "letters") {
+      const result = rooms.startLettersRound(code);
+      if (!result.ok) return;
+      io.to(code).emit("room:update", result.room);
+      io.to(code).emit("letters:started", { letters: result.letters });
+      return;
+    }
+
     const result = rooms.startFirstQuestion(code);
     if (!result.ok) return;
 
@@ -191,6 +199,18 @@ io.on("connection", (socket) => {
   socket.on("host:reveal-answer", ({ code }) => {
     const room = rooms.getRoom(code);
     if (!room || room.hostId !== socket.id) return;
+
+    if (room.round === "letters") {
+      const result = rooms.revealLetters(code);
+      if (!result) return;
+      io.to(code).emit("room:update", result.room);
+      io.to(code).emit("letters:revealed", {
+        submissions: result.submissions,
+        topWords: result.topWords,
+        players: result.room.players,
+      });
+      return;
+    }
 
     const result = rooms.revealAnswer(code);
     if (!result) return;
@@ -246,6 +266,16 @@ io.on("connection", (socket) => {
 
   socket.on("player:submit-answer", ({ code, optionIndex }, callback) => {
     const result = rooms.submitAnswer(code, socket.id, optionIndex);
+    callback(result);
+
+    if (result.ok) {
+      const room = rooms.getRoom(code);
+      if (room) io.to(code).emit("room:update", room);
+    }
+  });
+
+  socket.on("player:submit-word", ({ code, word }, callback) => {
+    const result = rooms.submitWord(code, socket.id, word);
     callback(result);
 
     if (result.ok) {

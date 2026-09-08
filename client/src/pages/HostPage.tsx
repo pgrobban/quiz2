@@ -31,11 +31,13 @@ import FlagIcon from "@mui/icons-material/Flag";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
 import type {
   GameRound,
+  LetterSubmission,
   Question,
   QuestionBankItem,
   RoomState,
 } from "../../../shared/types";
 import { socket } from "../lib/socket";
+import LetterReveal from "../components/LetterReveal";
 
 type ConnectionState = "connecting" | "ready" | "error";
 
@@ -55,6 +57,13 @@ export default function HostPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [question, setQuestion] = useState<Question | null>(null);
   const [correctIndex, setCorrectIndex] = useState<number | null>(null);
+
+  // Letters round state.
+  const [activeLetters, setActiveLetters] = useState<string[] | null>(null);
+  const [lettersRevealed, setLettersRevealed] = useState<{
+    submissions: LetterSubmission[];
+    topWords: string[];
+  } | null>(null);
 
   // Round/question selection (host-only, not part of shared room state).
   const [availableQuestions, setAvailableQuestions] = useState<
@@ -90,9 +99,23 @@ export default function HostPage() {
       setCorrectIndex(payload.correctIndex);
     }
 
+    function onLettersStarted(payload: { letters: string[] }) {
+      setActiveLetters(payload.letters);
+      setLettersRevealed(null);
+    }
+
+    function onLettersRevealed(payload: {
+      submissions: LetterSubmission[];
+      topWords: string[];
+    }) {
+      setLettersRevealed(payload);
+    }
+
     function onRoundEnded() {
       setQuestion(null);
       setCorrectIndex(null);
+      setActiveLetters(null);
+      setLettersRevealed(null);
       setAvailableQuestions(null);
       setSelectedQuestionIds([]);
     }
@@ -106,6 +129,8 @@ export default function HostPage() {
     socket.on("room:update", onRoomUpdate);
     socket.on("game:question", onQuestion);
     socket.on("game:reveal", onReveal);
+    socket.on("letters:started", onLettersStarted);
+    socket.on("letters:revealed", onLettersRevealed);
     socket.on("game:round-ended", onRoundEnded);
     socket.on("connect_error", onConnectError);
 
@@ -114,6 +139,8 @@ export default function HostPage() {
       socket.off("room:update", onRoomUpdate);
       socket.off("game:question", onQuestion);
       socket.off("game:reveal", onReveal);
+      socket.off("letters:started", onLettersStarted);
+      socket.off("letters:revealed", onLettersRevealed);
       socket.off("game:round-ended", onRoundEnded);
       socket.off("connect_error", onConnectError);
       socket.disconnect();
@@ -447,10 +474,13 @@ export default function HostPage() {
                           variant="outlined"
                           sx={{
                             p: 1.5,
-                            borderColor: isCorrect ? "success.main" : undefined,
                             bgcolor: isCorrect
-                              ? "rgba(76, 175, 80, 0.15)"
-                              : undefined,
+                              ? "rgba(74, 222, 128, 0.18)"
+                              : "rgba(244, 244, 246, 0.04)",
+                            borderColor: isCorrect
+                              ? "success.main"
+                              : "rgba(244, 244, 246, 0.16)",
+                            borderWidth: isCorrect ? 2 : 1,
                           }}
                         >
                           {option}
@@ -458,6 +488,68 @@ export default function HostPage() {
                       );
                     })}
                   </Stack>
+                </Paper>
+              )}
+
+            {(room.phase === "question" || room.phase === "reveal") &&
+              room.round === "letters" &&
+              activeLetters && (
+                <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 2 }}
+                  >
+                    <Typography variant="overline" color="text.secondary">
+                      Letters Round
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={`${room.answeredCount} / ${room.players.length} locked in`}
+                    />
+                  </Stack>
+
+                  <Box sx={{ py: 2 }}>
+                    <LetterReveal letters={activeLetters} />
+                  </Box>
+
+                  {lettersRevealed && (
+                    <>
+                      <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+                        Player Words
+                      </Typography>
+                      {lettersRevealed.submissions.length === 0 ? (
+                        <Typography color="text.secondary">
+                          No one locked in a word.
+                        </Typography>
+                      ) : (
+                        <List dense>
+                          {lettersRevealed.submissions.map((sub) => (
+                            <ListItem key={sub.playerId}>
+                              <ListItemText
+                                primary={`${sub.playerName}: ${sub.word}`}
+                                secondary={
+                                  sub.valid
+                                    ? `Valid - +${sub.points} pts`
+                                    : "Not a valid word"
+                                }
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      )}
+
+                      <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+                        Best Possible Words
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {lettersRevealed.topWords.map((word) => (
+                          <Chip key={word} label={word.toUpperCase()} color="success" />
+                        ))}
+                      </Stack>
+                    </>
+                  )}
                 </Paper>
               )}
 

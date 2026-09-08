@@ -288,3 +288,42 @@ socket connected: wrYBMBS3Dk0lOnQzAAAE
 socket connected: Sjwgdp6qRv08onP3AAAF
 socket connected: MUCqyePW5ovUErZxAAAG
 socket connected: r93rH5LblEMTtB67AAAH
+08:32:38 [tsx] change in ./src\questions.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: ao98KqcqAURNMx3yAAAA
+08:51:03 [tsx] change in ./src\roomManager.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: eGNablVcRksvf2oJAAAA
+08:51:07 [tsx] change in ./src\roomManager.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: zX6Nlm2E7PJ05mb9AAAA
+08:51:13 [tsx] change in ./src\roomManager.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: OLNLcM-TL_xVLaRzAAAA
+08:51:18 [tsx] change in ./src\roomManager.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: uuY2d64tsVHc-Q8VAAAA
+08:51:28 [tsx] change in ./src\roomManager.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: I5UEpV5eBOy8mc1CAAAA
+08:51:33 [tsx] change in ./src\roomManager.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: FuBVlzgx9ziFbXY-AAAA
+08:51:37 [tsx] change in ./src\roomManager.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: y-hENxBsqBLmcyWRAAAA
+08:51:53 [tsx] change in ./src\index.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: IkR5GGCQ2tpWkJ3iAAAA
+08:51:58 [tsx] change in ./src\index.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: PRuMTQHkOJJI82e8AAAA
+08:55:38 [tsx] change in ./src\letters.ts Restarting...
+Quiz game server listening on http://localhost:4000
+socket connected: 2ZRMdx28PCQ1TmbFAAAA
+socket connected: q4knZD3GKVMWD0ooAAAB
+socket connected: BIYH8bXW-1mhfzYjAAAC
+socket connected: Mj1-v27VU_stJWF4AAAD
+socket connected: M1X0vv6B3eUNwHnzAAAE
+socket connected: M1_PfEWmZDT1yiEqAAAF
+socket connected: TnCooMjeNv-mtJnfAAAG

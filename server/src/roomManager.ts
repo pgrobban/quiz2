@@ -1,12 +1,14 @@
 import { randomInt } from "node:crypto";
 import type {
   GameRound,
+  LetterSubmission,
   Player,
   Question,
   QuestionBankItem,
   RoomState,
 } from "../../shared/types";
 import { QUESTION_BANK, ROUND_CATALOG, QuestionWithAnswer, toPublicQuestion } from "./questions";
+import { canFormWord, findTopWords, generateLetters, isDictionaryWord } from "./letters";
 
 interface InternalRoom {
   public: RoomState;
@@ -14,6 +16,8 @@ interface InternalRoom {
   selectedQuestions: QuestionWithAnswer[];
   /** playerId -> whether their submitted answer for the *current* question was correct. */
   pendingAnswers: Map<string, boolean>;
+  /** playerId -> the word they've locked in for the current letters round. */
+  letterSubmissions: Map<string, string>;
 }
 
 export interface AdvanceResult {
@@ -27,11 +31,21 @@ export interface RevealResult {
   correctIndex: number;
 }
 
+export interface LettersRevealResult {
+  room: RoomState;
+  submissions: LetterSubmission[];
+  topWords: string[];
+}
+
 export type SubmitAnswerResult =
   | { ok: true; correct: boolean }
   | { ok: false; error: string };
 
+export type SubmitWordResult = { ok: true } | { ok: false; error: string };
+
 const POINTS_PER_CORRECT_ANSWER = 100;
+/** Points awarded per letter of a valid word in the letters round (an 8-letter word = 80pts). */
+const POINTS_PER_LETTER = 10;
 
 /**
  * In-memory store of active rooms. Since this is a simple quiz-night app,
@@ -62,9 +76,11 @@ export class RoomManager {
         currentQuestionIndex: -1,
         totalQuestions: 0,
         answeredCount: 0,
+        activeLetters: null,
       },
       selectedQuestions: [],
       pendingAnswers: new Map(),
+      letterSubmissions: new Map(),
     };
     this.rooms.set(code, room);
     return room.public;
@@ -105,6 +121,7 @@ export class RoomManager {
     if (!internal) return undefined;
     internal.public.players = internal.public.players.filter((p) => p.id !== playerId);
     internal.pendingAnswers.delete(playerId);
+    internal.letterSubmissions.delete(playerId);
     return internal.public;
   }
 
@@ -131,8 +148,17 @@ export class RoomManager {
     internal.public.roundInfo = ROUND_CATALOG[round];
     internal.public.currentQuestionIndex = -1;
     internal.public.totalQuestions = 0;
+    internal.public.activeLetters = null;
     internal.selectedQuestions = [];
     internal.pendingAnswers.clear();
+    internal.letterSubmissions.clear();
+
+    if (round === "letters") {
+      // The letters round is procedurally generated - there's no bank of
+      // questions for the host to pick from, so it's immediately "ready".
+      internal.public.totalQuestions = 1;
+      return { ok: true, room: internal.public, availableQuestions: [] };
+    }
 
     return {
       ok: true,
@@ -180,7 +206,7 @@ export class RoomManager {
     if (internal.public.phase !== "lobby") {
       return { ok: false, error: "Room isn't ready for a tutorial right now." };
     }
-    if (!internal.public.round || internal.selectedQuestions.length === 0) {
+    if (!internal.public.round || internal.public.totalQuestions === 0) {
       return { ok: false, error: "Select a round and its questions first." };
     }
 
@@ -207,6 +233,83 @@ export class RoomManager {
       ok: true,
       room: internal.public,
       question: toPublicQuestion(internal.selectedQuestions[0]),
+    };
+  }
+
+  /** Letters round: generates the 12 letters and moves from the tutorial screen into play. */
+  startLettersRound(
+    code: string
+  ): { ok: true; room: RoomState; letters: string[] } | { ok: false; error: string } {
+    const internal = this.rooms.get(code);
+    if (!internal) return { ok: false, error: "Room not found." };
+    if (internal.public.phase !== "introduction") {
+      return { ok: false, error: "Show the tutorial before starting the round." };
+    }
+
+    const letters = generateLetters();
+    internal.public.phase = "question";
+    internal.public.currentQuestionIndex = 0;
+    internal.public.answeredCount = 0;
+    internal.public.activeLetters = letters;
+    internal.letterSubmissions.clear();
+
+    return { ok: true, room: internal.public, letters };
+  }
+
+  /** Letters round: locks in a player's word (one submission per player per round). */
+  submitWord(code: string, playerId: string, word: string): SubmitWordResult {
+    const internal = this.rooms.get(code);
+    if (!internal) return { ok: false, error: "Room not found." };
+    if (internal.public.phase !== "question" || internal.public.round !== "letters") {
+      return { ok: false, error: "Not accepting words right now." };
+    }
+    if (internal.letterSubmissions.has(playerId)) {
+      return { ok: false, error: "You already locked in a word." };
+    }
+
+    const cleaned = word.trim().toUpperCase().replace(/[^A-Z]/g, "");
+    if (!cleaned) {
+      return { ok: false, error: "Enter a word first." };
+    }
+
+    internal.letterSubmissions.set(playerId, cleaned);
+    internal.public.answeredCount = internal.letterSubmissions.size;
+
+    return { ok: true };
+  }
+
+  /** Letters round: scores every locked-in word and finds the best possible words. */
+  revealLetters(code: string): LettersRevealResult | undefined {
+    const internal = this.rooms.get(code);
+    if (!internal || !internal.public.activeLetters) return undefined;
+
+    const letters = internal.public.activeLetters;
+    const submissions: LetterSubmission[] = [];
+
+    for (const player of internal.public.players) {
+      const word = internal.letterSubmissions.get(player.id);
+      if (!word) continue;
+
+      const valid = word.length >= 3 && canFormWord(word, letters) && isDictionaryWord(word);
+      const points = valid ? word.length * POINTS_PER_LETTER : 0;
+      if (points > 0) player.score += points;
+
+      submissions.push({
+        playerId: player.id,
+        playerName: player.name,
+        word,
+        valid,
+        points,
+      });
+    }
+
+    internal.public.phase = "reveal";
+    internal.letterSubmissions.clear();
+
+    return {
+      room: internal.public,
+      submissions,
+      topWords: findTopWords(letters),
     };
   }
 
@@ -247,8 +350,10 @@ export class RoomManager {
     internal.public.currentQuestionIndex = -1;
     internal.public.totalQuestions = 0;
     internal.public.answeredCount = 0;
+    internal.public.activeLetters = null;
     internal.selectedQuestions = [];
     internal.pendingAnswers.clear();
+    internal.letterSubmissions.clear();
   }
 
   /** Ends the whole game (all rounds) and freezes the final scoreboard. */

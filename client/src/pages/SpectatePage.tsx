@@ -20,8 +20,14 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import type { Player, Question, RoomState } from "../../../shared/types";
+import type {
+  LetterSubmission,
+  Player,
+  Question,
+  RoomState,
+} from "../../../shared/types";
 import { socket } from "../lib/socket";
+import LetterReveal from "../components/LetterReveal";
 
 type ViewState = "form" | "joining" | "watching";
 
@@ -33,6 +39,10 @@ export default function SpectatePage() {
   const [room, setRoom] = useState<RoomState | null>(null);
   const [question, setQuestion] = useState<Question | null>(null);
   const [correctIndex, setCorrectIndex] = useState<number | null>(null);
+  const [lettersReveal, setLettersReveal] = useState<{
+    submissions: LetterSubmission[];
+    topWords: string[];
+  } | null>(null);
 
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
@@ -40,6 +50,7 @@ export default function SpectatePage() {
       if (updatedRoom.phase === "lobby") {
         setQuestion(null);
         setCorrectIndex(null);
+        setLettersReveal(null);
       }
     }
 
@@ -50,6 +61,13 @@ export default function SpectatePage() {
 
     function onReveal(payload: { correctIndex: number }) {
       setCorrectIndex(payload.correctIndex);
+    }
+
+    function onLettersRevealed(payload: {
+      submissions: LetterSubmission[];
+      topWords: string[];
+    }) {
+      setLettersReveal(payload);
     }
 
     function onFinished() {
@@ -66,6 +84,7 @@ export default function SpectatePage() {
     socket.on("room:update", onRoomUpdate);
     socket.on("game:question", onQuestion);
     socket.on("game:reveal", onReveal);
+    socket.on("letters:revealed", onLettersRevealed);
     socket.on("game:finished", onFinished);
     socket.on("room:closed", onRoomClosed);
 
@@ -73,6 +92,7 @@ export default function SpectatePage() {
       socket.off("room:update", onRoomUpdate);
       socket.off("game:question", onQuestion);
       socket.off("game:reveal", onReveal);
+      socket.off("letters:revealed", onLettersRevealed);
       socket.off("game:finished", onFinished);
       socket.off("room:closed", onRoomClosed);
     };
@@ -189,12 +209,19 @@ export default function SpectatePage() {
                   <Typography variant="h5" sx={{ fontFamily: "monospace" }}>
                     Room {room.code}
                   </Typography>
-                  {room.phase !== "lobby" && room.phase !== "finished" && (
-                    <Chip
-                      label={`Question ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
-                      color="secondary"
-                    />
-                  )}
+                  {room.phase !== "lobby" &&
+                    room.phase !== "finished" &&
+                    room.round !== "letters" && (
+                      <Chip
+                        label={`Question ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        color="secondary"
+                      />
+                    )}
+                  {room.round === "letters" &&
+                    room.phase !== "lobby" &&
+                    room.phase !== "finished" && (
+                      <Chip label="Letters Round" color="secondary" />
+                    )}
                 </Stack>
 
                 {room.phase === "lobby" && (
@@ -240,6 +267,7 @@ export default function SpectatePage() {
                 )}
 
                 {(room.phase === "question" || room.phase === "reveal") &&
+                  room.round !== "letters" &&
                   question && (
                     <Stack flexGrow={1} justifyContent="center" spacing={3}>
                       <Typography variant="h4" textAlign="center">
@@ -259,11 +287,11 @@ export default function SpectatePage() {
                                   fontSize: "1.1rem",
                                   borderColor: isCorrect
                                     ? "success.main"
-                                    : undefined,
+                                    : "rgba(244, 244, 246, 0.16)",
                                   borderWidth: isCorrect ? 2 : 1,
                                   bgcolor: isCorrect
-                                    ? "rgba(76, 175, 80, 0.15)"
-                                    : undefined,
+                                    ? "rgba(74, 222, 128, 0.18)"
+                                    : "rgba(244, 244, 246, 0.04)",
                                   transition: "all 0.2s",
                                 }}
                               >
@@ -282,6 +310,70 @@ export default function SpectatePage() {
                           ? `${room.answeredCount} / ${room.players.length} players have answered`
                           : "Answer revealed!"}
                       </Typography>
+                    </Stack>
+                  )}
+
+                {(room.phase === "question" || room.phase === "reveal") &&
+                  room.round === "letters" &&
+                  room.activeLetters && (
+                    <Stack flexGrow={1} justifyContent="center" spacing={3}>
+                      <Box sx={{ py: 2 }}>
+                        <LetterReveal letters={room.activeLetters} tileSize={56} />
+                      </Box>
+
+                      {!lettersReveal && (
+                        <Typography
+                          textAlign="center"
+                          color="text.secondary"
+                          variant="body2"
+                        >
+                          {room.answeredCount} / {room.players.length} players
+                          have locked in a word
+                        </Typography>
+                      )}
+
+                      {lettersReveal && (
+                        <Stack spacing={2}>
+                          <Typography variant="h6" textAlign="center">
+                            Player Words
+                          </Typography>
+                          <Grid container spacing={1.5} justifyContent="center">
+                            {lettersReveal.submissions.map((sub) => (
+                              <Grid item key={sub.playerId}>
+                                <Chip
+                                  label={`${sub.playerName}: ${sub.word} ${
+                                    sub.valid ? `(+${sub.points})` : "(invalid)"
+                                  }`}
+                                  color={sub.valid ? "success" : "default"}
+                                />
+                              </Grid>
+                            ))}
+                          </Grid>
+
+                          <Typography
+                            variant="h6"
+                            textAlign="center"
+                            sx={{ mt: 2 }}
+                          >
+                            Best Possible Words
+                          </Typography>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            justifyContent="center"
+                            flexWrap="wrap"
+                            useFlexGap
+                          >
+                            {lettersReveal.topWords.map((word) => (
+                              <Chip
+                                key={word}
+                                label={word.toUpperCase()}
+                                color="success"
+                              />
+                            ))}
+                          </Stack>
+                        </Stack>
+                      )}
                     </Stack>
                   )}
 

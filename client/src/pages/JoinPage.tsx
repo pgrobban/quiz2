@@ -15,8 +15,14 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import type { Player, Question, RoomState } from "../../../shared/types";
+import type {
+  LetterSubmission,
+  Player,
+  Question,
+  RoomState,
+} from "../../../shared/types";
 import { socket } from "../lib/socket";
+import LetterReveal from "../components/LetterReveal";
 
 type ViewState =
   | "form"
@@ -24,6 +30,7 @@ type ViewState =
   | "lobby"
   | "introduction"
   | "question"
+  | "letters"
   | "finished";
 
 export default function JoinPage() {
@@ -39,6 +46,17 @@ export default function JoinPage() {
   const [correctIndex, setCorrectIndex] = useState<number | null>(null);
   const [finalPlayers, setFinalPlayers] = useState<Player[]>([]);
 
+  // Letters round state.
+  const [activeLetters, setActiveLetters] = useState<string[] | null>(null);
+  const [revealAnimationDone, setRevealAnimationDone] = useState(false);
+  /** Indices into `activeLetters`, in the order the player tapped them into the word box. */
+  const [wordIndices, setWordIndices] = useState<number[]>([]);
+  const [wordLocked, setWordLocked] = useState(false);
+  const [lettersReveal, setLettersReveal] = useState<{
+    submissions: LetterSubmission[];
+    topWords: string[];
+  } | null>(null);
+
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
       setRoom(updatedRoom);
@@ -47,6 +65,11 @@ export default function JoinPage() {
         setSelectedIndex(null);
         setWasCorrect(null);
         setCorrectIndex(null);
+        setActiveLetters(null);
+        setRevealAnimationDone(false);
+        setWordIndices([]);
+        setWordLocked(false);
+        setLettersReveal(null);
         setViewState("lobby");
       } else if (updatedRoom.phase === "introduction") {
         setViewState("introduction");
@@ -65,6 +88,22 @@ export default function JoinPage() {
       setCorrectIndex(payload.correctIndex);
     }
 
+    function onLettersStarted(payload: { letters: string[] }) {
+      setActiveLetters(payload.letters);
+      setRevealAnimationDone(false);
+      setWordIndices([]);
+      setWordLocked(false);
+      setLettersReveal(null);
+      setViewState("letters");
+    }
+
+    function onLettersRevealed(payload: {
+      submissions: LetterSubmission[];
+      topWords: string[];
+    }) {
+      setLettersReveal(payload);
+    }
+
     function onFinished(payload: { players: Player[] }) {
       setFinalPlayers(payload.players);
       setViewState("finished");
@@ -80,6 +119,8 @@ export default function JoinPage() {
     socket.on("room:update", onRoomUpdate);
     socket.on("game:question", onQuestion);
     socket.on("game:reveal", onReveal);
+    socket.on("letters:started", onLettersStarted);
+    socket.on("letters:revealed", onLettersRevealed);
     socket.on("game:finished", onFinished);
     socket.on("room:closed", onRoomClosed);
 
@@ -87,6 +128,8 @@ export default function JoinPage() {
       socket.off("room:update", onRoomUpdate);
       socket.off("game:question", onQuestion);
       socket.off("game:reveal", onReveal);
+      socket.off("letters:started", onLettersStarted);
+      socket.off("letters:revealed", onLettersRevealed);
       socket.off("game:finished", onFinished);
       socket.off("room:closed", onRoomClosed);
     };
@@ -156,6 +199,35 @@ export default function JoinPage() {
     }
     socket.disconnect();
     navigate("/");
+  };
+
+  const handleLockInWord = () => {
+    if (!room || wordLocked || wordIndices.length === 0 || !activeLetters) return;
+    const word = wordIndices.map((i) => activeLetters[i]).join("");
+    socket.emit(
+      "player:submit-word",
+      { code: room.code, word },
+      (response) => {
+        if (response.ok) {
+          setWordLocked(true);
+        } else {
+          setErrorMessage(response.error);
+        }
+      }
+    );
+  };
+
+  /** Taps an available (not-yet-used) letter tile into the word box. */
+  const handleTapPoolLetter = (index: number) => {
+    if (!revealAnimationDone || wordLocked) return;
+    if (wordIndices.includes(index)) return;
+    setWordIndices((prev) => [...prev, index]);
+  };
+
+  /** Taps a letter already in the word box to send it back to the pool. */
+  const handleTapBoxLetter = (position: number) => {
+    if (wordLocked) return;
+    setWordIndices((prev) => prev.filter((_, i) => i !== position));
   };
 
   const myScore = room?.players.find((p) => p.id === socket.id)?.score ?? 0;
@@ -309,6 +381,124 @@ export default function JoinPage() {
                 >
                   {wasCorrect ? "Correct! +100 points" : "Not quite this time."}
                 </Alert>
+              )}
+            </Paper>
+          </>
+        )}
+
+        {viewState === "letters" && room && activeLetters && (
+          <>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="overline" color="text.secondary">
+                Letters Round
+              </Typography>
+              <Chip label={`${myScore} pts`} color="primary" size="small" />
+            </Stack>
+
+            <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+              <Box sx={{ py: 1 }}>
+                <LetterReveal
+                  letters={activeLetters}
+                  tileSize={44}
+                  onComplete={() => setRevealAnimationDone(true)}
+                  onTileClick={!wordLocked ? handleTapPoolLetter : undefined}
+                  usedIndices={wordIndices}
+                />
+              </Box>
+
+              {!lettersReveal && (
+                <Stack spacing={2} sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Your word (tap to undo)
+                  </Typography>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    flexWrap="wrap"
+                    useFlexGap
+                    sx={{
+                      minHeight: 56,
+                      p: 1,
+                      borderRadius: 2,
+                      border: "1px dashed rgba(244, 244, 246, 0.28)",
+                    }}
+                  >
+                    {wordIndices.length === 0 && (
+                      <Typography color="text.secondary" sx={{ py: 1, px: 0.5 }}>
+                        {revealAnimationDone
+                          ? "Tap letters above to build a word..."
+                          : "Wait for all letters to appear..."}
+                      </Typography>
+                    )}
+                    {wordIndices.map((letterIndex, position) => (
+                      <Button
+                        key={position}
+                        variant="contained"
+                        color="primary"
+                        disabled={wordLocked}
+                        onClick={() => handleTapBoxLetter(position)}
+                        sx={{
+                          minWidth: 44,
+                          height: 44,
+                          fontFamily: "monospace",
+                          fontSize: "1.1rem",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {activeLetters[letterIndex]}
+                      </Button>
+                    ))}
+                  </Stack>
+
+                  <Button
+                    variant="contained"
+                    size="large"
+                    color="success"
+                    disabled={!revealAnimationDone || wordLocked || wordIndices.length === 0}
+                    onClick={handleLockInWord}
+                  >
+                    Lock In Word
+                  </Button>
+                  {wordLocked && (
+                    <Typography color="text.secondary" textAlign="center">
+                      Locked in "{wordIndices.map((i) => activeLetters[i]).join("")}" -
+                      waiting for the host to reveal...
+                    </Typography>
+                  )}
+                </Stack>
+              )}
+
+              {lettersReveal && (
+                <Stack spacing={2} sx={{ mt: 3 }}>
+                  {(() => {
+                    const mine = lettersReveal.submissions.find(
+                      (s) => s.playerId === socket.id
+                    );
+                    if (!mine) {
+                      return (
+                        <Alert severity="warning">
+                          You didn't lock in a word this round.
+                        </Alert>
+                      );
+                    }
+                    return (
+                      <Alert severity={mine.valid ? "success" : "error"}>
+                        {mine.valid
+                          ? `"${mine.word}" is valid! +${mine.points} points`
+                          : `"${mine.word}" wasn't a valid word.`}
+                      </Alert>
+                    );
+                  })()}
+
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Best possible words:
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {lettersReveal.topWords.map((word) => (
+                      <Chip key={word} label={word.toUpperCase()} color="success" />
+                    ))}
+                  </Stack>
+                </Stack>
               )}
             </Paper>
           </>

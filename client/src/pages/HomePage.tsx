@@ -33,12 +33,12 @@ export default function HomePage() {
 
         <Stack spacing={2} sx={{ width: "100%", maxWidth: 320 }}>
           <Button
-            variant="contained"
+            variant="outlined"
             size="large"
             startIcon={<SmartphoneIcon />}
             onClick={() => navigate("/join")}
           >
-            Join a Game
+            Join Game
           </Button>
           <Button
             variant="outlined"
@@ -47,7 +47,7 @@ export default function HomePage() {
             startIcon={<CastForEducationIcon />}
             onClick={() => navigate("/host")}
           >
-            Host a Game
+            Host Game
           </Button>
           <Button
             variant="outlined"

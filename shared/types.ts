@@ -51,6 +51,8 @@ export interface RoomState {
   totalQuestions: number;
   /** How many players have submitted an answer for the current question. */
   answeredCount: number;
+  /** The 12 generated letters for the "letters" round, while it's active/revealed. Null otherwise. */
+  activeLetters: string[] | null;
 }
 
 export interface RevealPayload {
@@ -63,6 +65,22 @@ export interface QuestionPayload {
   index: number;
   total: number;
   question: Question;
+}
+
+/** One player's submitted word for the letters round, with validity/score computed at reveal time. */
+export interface LetterSubmission {
+  playerId: string;
+  playerName: string;
+  word: string;
+  valid: boolean;
+  points: number;
+}
+
+export interface LettersRevealPayload {
+  submissions: LetterSubmission[];
+  /** A handful of the longest possible words found in the dictionary for these letters. */
+  topWords: string[];
+  players: Player[];
 }
 
 export interface ClientToServerEvents {
@@ -130,6 +148,12 @@ export interface ClientToServerEvents {
     callback: (response: { ok: true; correct: boolean } | { ok: false; error: string }) => void
   ) => void;
 
+  /** Letters round: submit (and lock in) a word built from the active letters. */
+  "player:submit-word": (
+    payload: { code: string; word: string },
+    callback: (response: { ok: true } | { ok: false; error: string }) => void
+  ) => void;
+
   "player:leave-room": (payload: { code: string }) => void;
 }
 
@@ -137,6 +161,10 @@ export interface ServerToClientEvents {
   "room:update": (room: RoomState) => void;
   "game:question": (payload: QuestionPayload) => void;
   "game:reveal": (payload: RevealPayload) => void;
+  /** Letters round: the 12 letters have been generated and the round is now active. */
+  "letters:started": (payload: { letters: string[] }) => void;
+  /** Letters round: submitted words have been scored and the best possible words computed. */
+  "letters:revealed": (payload: LettersRevealPayload) => void;
   /** The current round's questions have all been played (or the host ended it early). */
   "game:round-ended": (payload: { players: Player[] }) => void;
   "game:finished": (payload: { players: Player[] }) => void;
