@@ -23,6 +23,7 @@ import type {
 } from "../../../shared/types";
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
+import CountdownBar from "../components/CountdownBar";
 
 type ViewState =
   | "form"
@@ -45,6 +46,7 @@ export default function JoinPage() {
   const [wasCorrect, setWasCorrect] = useState<boolean | null>(null);
   const [correctIndex, setCorrectIndex] = useState<number | null>(null);
   const [finalPlayers, setFinalPlayers] = useState<Player[]>([]);
+  const [timeExpired, setTimeExpired] = useState(false);
 
   // Letters round state.
   const [activeLetters, setActiveLetters] = useState<string[] | null>(null);
@@ -70,6 +72,7 @@ export default function JoinPage() {
         setWordIndices([]);
         setWordLocked(false);
         setLettersReveal(null);
+        setTimeExpired(false);
         setViewState("lobby");
       } else if (updatedRoom.phase === "introduction") {
         setViewState("introduction");
@@ -81,6 +84,7 @@ export default function JoinPage() {
       setSelectedIndex(null);
       setWasCorrect(null);
       setCorrectIndex(null);
+      setTimeExpired(false);
       setViewState("question");
     }
 
@@ -94,6 +98,7 @@ export default function JoinPage() {
       setWordIndices([]);
       setWordLocked(false);
       setLettersReveal(null);
+      setTimeExpired(false);
       setViewState("letters");
     }
 
@@ -177,7 +182,7 @@ export default function JoinPage() {
   };
 
   const handleAnswer = (optionIndex: number) => {
-    if (!room || selectedIndex !== null) return;
+    if (!room || selectedIndex !== null || timeExpired) return;
     setSelectedIndex(optionIndex);
     socket.emit(
       "player:submit-answer",
@@ -202,7 +207,8 @@ export default function JoinPage() {
   };
 
   const handleLockInWord = () => {
-    if (!room || wordLocked || wordIndices.length === 0 || !activeLetters) return;
+    if (!room || wordLocked || timeExpired || wordIndices.length === 0 || !activeLetters)
+      return;
     const word = wordIndices.map((i) => activeLetters[i]).join("");
     socket.emit(
       "player:submit-word",
@@ -219,14 +225,14 @@ export default function JoinPage() {
 
   /** Taps an available (not-yet-used) letter tile into the word box. */
   const handleTapPoolLetter = (index: number) => {
-    if (!revealAnimationDone || wordLocked) return;
+    if (!revealAnimationDone || wordLocked || timeExpired) return;
     if (wordIndices.includes(index)) return;
     setWordIndices((prev) => [...prev, index]);
   };
 
   /** Taps a letter already in the word box to send it back to the pool. */
   const handleTapBoxLetter = (position: number) => {
-    if (wordLocked) return;
+    if (wordLocked || timeExpired) return;
     setWordIndices((prev) => prev.filter((_, i) => i !== position));
   };
 
@@ -329,6 +335,15 @@ export default function JoinPage() {
             </Stack>
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+              {room.phaseDeadline !== null && (
+                <Box sx={{ mb: 2 }}>
+                  <CountdownBar
+                    deadline={room.phaseDeadline}
+                    totalSeconds={15}
+                    onExpire={() => setTimeExpired(true)}
+                  />
+                </Box>
+              )}
               <Typography variant="h6" sx={{ mb: 2 }}>
                 {question.text}
               </Typography>
@@ -352,7 +367,7 @@ export default function JoinPage() {
                           : "primary"
                       }
                       size="large"
-                      disabled={selectedIndex !== null}
+                      disabled={selectedIndex !== null || timeExpired}
                       onClick={() => handleAnswer(index)}
                       endIcon={
                         isRevealedCorrect ? (
@@ -373,6 +388,11 @@ export default function JoinPage() {
                 <Typography color="text.secondary" sx={{ mt: 2, textAlign: "center" }}>
                   Answer submitted! Waiting for the host to reveal...
                 </Typography>
+              )}
+              {timeExpired && selectedIndex === null && correctIndex === null && (
+                <Alert severity="warning" sx={{ mt: 2 }}>
+                  Time's up! You didn't answer in time.
+                </Alert>
               )}
               {correctIndex !== null && (
                 <Alert
@@ -396,12 +416,21 @@ export default function JoinPage() {
             </Stack>
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+              {room.phaseDeadline !== null && (
+                <Box sx={{ mb: 2 }}>
+                  <CountdownBar
+                    deadline={room.phaseDeadline}
+                    totalSeconds={60}
+                    onExpire={() => setTimeExpired(true)}
+                  />
+                </Box>
+              )}
               <Box sx={{ py: 1 }}>
                 <LetterReveal
                   letters={activeLetters}
                   tileSize={44}
                   onComplete={() => setRevealAnimationDone(true)}
-                  onTileClick={!wordLocked ? handleTapPoolLetter : undefined}
+                  onTileClick={!wordLocked && !timeExpired ? handleTapPoolLetter : undefined}
                   usedIndices={wordIndices}
                 />
               </Box>
@@ -435,7 +464,7 @@ export default function JoinPage() {
                         key={position}
                         variant="contained"
                         color="primary"
-                        disabled={wordLocked}
+                        disabled={wordLocked || timeExpired}
                         onClick={() => handleTapBoxLetter(position)}
                         sx={{
                           minWidth: 44,
@@ -454,7 +483,12 @@ export default function JoinPage() {
                     variant="contained"
                     size="large"
                     color="success"
-                    disabled={!revealAnimationDone || wordLocked || wordIndices.length === 0}
+                    disabled={
+                      !revealAnimationDone ||
+                      wordLocked ||
+                      timeExpired ||
+                      wordIndices.length === 0
+                    }
                     onClick={handleLockInWord}
                   >
                     Lock In Word
@@ -464,6 +498,11 @@ export default function JoinPage() {
                       Locked in "{wordIndices.map((i) => activeLetters[i]).join("")}" -
                       waiting for the host to reveal...
                     </Typography>
+                  )}
+                  {timeExpired && !wordLocked && (
+                    <Alert severity="warning">
+                      Time's up! You didn't lock in a word.
+                    </Alert>
                   )}
                 </Stack>
               )}

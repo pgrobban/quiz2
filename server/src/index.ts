@@ -8,7 +8,7 @@ import type {
   ServerToClientEvents,
   SocketData,
 } from "../../shared/types";
-import { RoomManager } from "./roomManager";
+import { LETTERS_REVEAL_ANIMATION_MS, RoomManager } from "./roomManager";
 
 const PORT = Number(process.env.PORT) || 4000;
 
@@ -182,6 +182,13 @@ io.on("connection", (socket) => {
       if (!result.ok) return;
       io.to(code).emit("room:update", result.room);
       io.to(code).emit("letters:started", { letters: result.letters });
+
+      // Give clients time to finish the letter-reveal animation before the
+      // answer countdown actually starts ticking.
+      setTimeout(() => {
+        const updatedRoom = rooms.activateLettersTimer(code);
+        if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
+      }, LETTERS_REVEAL_ANIMATION_MS);
       return;
     }
 

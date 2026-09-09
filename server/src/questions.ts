@@ -70,8 +70,8 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-4",
-      text: "What is the national arena of Sweden?",
-      options: ["Strawberry Arena", "3Arena", "Avicii Arena"],
+      text: "In 'D-day', what does the D stand for?",
+      options: ["Decision", "Deploy", "Day"],
       correctIndex: 2,
     },
     {
@@ -229,50 +229,71 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
       text: "What year was D-day?",
       options: ["1942", "1943", "1944", "1945"],
       correctIndex: 2,
+    },
+    {
+      id: "quiz-31",
+      text: "How many children does Donald Duck have?",
+      options: ["0", "1", "2", "3"],
+      correctIndex: 0,
+    },
+    {
+      id: "quiz-32",
+      text: "What gas do plants absorb from the atmosphere?",
+      options: ["Oxygen", "Carbon dioxide", "Nitrogen", "Hydrogen"],
+      correctIndex: 1,
+    },
+    {
+      id: "quiz-33",
+      text: "In the classic picture of Che Guevara, does he have facial hair?",
+      options: ["Yes", "No"],
+      correctIndex: 0,
+    },
+    {
+      id: "quiz-34",
+      text: "Did Julius Caesar die before or after the year 0?",
+      options: ["Before", "After"],
+      correctIndex: 0,
+    },
+    {
+      id: "quiz-35",
+      text: "What is the correct spelling?",
+      options: ["Yin and Yan", "Ying and Yang", "Yin and Yang"],
+      correctIndex: 2,
+    },
+    {
+      id: "quiz-36",
+      text: "Was Bambi a girl or a boy?",
+      options: ["Girl", "Boy"],
+      correctIndex: 1,
+    },
+    {
+      id: "quiz-37",
+      text: "Is the callsign of the plane carrying the US Vice President 'Air Force Two'?",
+      options: ["Yes", "No"],
+      correctIndex: 0,
+    },
+    {
+      id: "quiz-38",
+      text: "Does breast milk contain natural lactose?",
+      options: ["Yes", "No"],
+      correctIndex: 0,
+    },
+    {
+      id: "quiz-39",
+      text: "Do giraffes have horns?",
+      options: ["Yes", "No"],
+      correctIndex: 0
+    },
+    {
+      id: "quiz-40",
+      text: "Who came first into power?",
+      options: ["Stalin", "Lenin"],
+      correctIndex: 1,
     }
   ],
-  letters: [
-    {
-      id: "letters-1",
-      text: "Which word is spelled correctly?",
-      options: ["Recieve", "Receive", "Receeve", "Receve"],
-      correctIndex: 1,
-    },
-    {
-      id: "letters-2",
-      text: "Which of these is NOT an anagram of 'LISTEN'?",
-      options: ["SILENT", "ENLIST", "TINSEL", "SPRINT"],
-      correctIndex: 3,
-    },
-  ],
-  matching: [
-    {
-      id: "matching-1",
-      text: "Which capital matches with Japan?",
-      options: ["Seoul", "Tokyo", "Beijing", "Bangkok"],
-      correctIndex: 1,
-    },
-    {
-      id: "matching-2",
-      text: "Which animal matches with 'pride'?",
-      options: ["Wolves", "Lions", "Fish", "Crows"],
-      correctIndex: 1,
-    },
-  ],
-  math: [
-    {
-      id: "math-1",
-      text: "What is 12 x 8?",
-      options: ["86", "96", "106", "108"],
-      correctIndex: 1,
-    },
-    {
-      id: "math-2",
-      text: "What is the square root of 144?",
-      options: ["11", "12", "13", "14"],
-      correctIndex: 1,
-    },
-  ],
+  letters: [],
+  matching: [],
+  math: [],
   associations: [
     {
       id: "assoc-1",

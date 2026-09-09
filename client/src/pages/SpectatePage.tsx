@@ -28,6 +28,7 @@ import type {
 } from "../../../shared/types";
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
+import CountdownBar from "../components/CountdownBar";
 
 type ViewState = "form" | "joining" | "watching";
 
@@ -270,6 +271,11 @@ export default function SpectatePage() {
                   room.round !== "letters" &&
                   question && (
                     <Stack flexGrow={1} justifyContent="center" spacing={3}>
+                      {room.phaseDeadline !== null && (
+                        <Box sx={{ maxWidth: 480, mx: "auto", width: "100%" }}>
+                          <CountdownBar deadline={room.phaseDeadline} totalSeconds={15} />
+                        </Box>
+                      )}
                       <Typography variant="h4" textAlign="center">
                         {question.text}
                       </Typography>
@@ -317,6 +323,11 @@ export default function SpectatePage() {
                   room.round === "letters" &&
                   room.activeLetters && (
                     <Stack flexGrow={1} justifyContent="center" spacing={3}>
+                      {room.phaseDeadline !== null && (
+                        <Box sx={{ maxWidth: 480, mx: "auto", width: "100%" }}>
+                          <CountdownBar deadline={room.phaseDeadline} totalSeconds={60} />
+                        </Box>
+                      )}
                       <Box sx={{ py: 2 }}>
                         <LetterReveal letters={room.activeLetters} tileSize={56} />
                       </Box>

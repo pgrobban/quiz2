@@ -38,6 +38,7 @@ import type {
 } from "../../../shared/types";
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
+import CountdownBar from "../components/CountdownBar";
 
 type ConnectionState = "connecting" | "ready" | "error";
 
@@ -461,6 +462,11 @@ export default function HostPage() {
                       label={`${room.answeredCount} / ${room.players.length} answered`}
                     />
                   </Stack>
+                  {room.phaseDeadline !== null && (
+                    <Box sx={{ mb: 2 }}>
+                      <CountdownBar deadline={room.phaseDeadline} totalSeconds={15} />
+                    </Box>
+                  )}
                   <Typography variant="h6" sx={{ mb: 2 }}>
                     {question.text}
                   </Typography>
@@ -509,6 +515,12 @@ export default function HostPage() {
                       label={`${room.answeredCount} / ${room.players.length} locked in`}
                     />
                   </Stack>
+
+                  {room.phaseDeadline !== null && (
+                    <Box sx={{ mb: 2 }}>
+                      <CountdownBar deadline={room.phaseDeadline} totalSeconds={60} />
+                    </Box>
+                  )}
 
                   <Box sx={{ py: 2 }}>
                     <LetterReveal letters={activeLetters} />

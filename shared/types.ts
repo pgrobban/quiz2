@@ -53,6 +53,11 @@ export interface RoomState {
   answeredCount: number;
   /** The 12 generated letters for the "letters" round, while it's active/revealed. Null otherwise. */
   activeLetters: string[] | null;
+  /**
+   * Epoch ms when the current question/letters round's answer window closes.
+   * Null when there's no active countdown (lobby, introduction, reveal, finished).
+   */
+  phaseDeadline: number | null;
 }
 
 export interface RevealPayload {

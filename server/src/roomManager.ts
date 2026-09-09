@@ -47,6 +47,19 @@ const POINTS_PER_CORRECT_ANSWER = 100;
 /** Points awarded per letter of a valid word in the letters round (an 8-letter word = 80pts). */
 const POINTS_PER_LETTER = 10;
 
+/** How long players have to answer a standard multiple-choice question. */
+const QUESTION_TIME_LIMIT_MS = 15_000;
+/** How long players have to build and lock in a word for the letters round. */
+const LETTERS_TIME_LIMIT_MS = 60_000;
+/**
+ * How long the client-side letter reveal animation takes (12 letters x 3s
+ * each - see client/src/components/LetterReveal.tsx). The answer timer
+ * shouldn't start ticking until all 12 letters have actually appeared.
+ */
+const LETTERS_REVEAL_ANIMATION_MS = 12 * 3000;
+
+export { LETTERS_REVEAL_ANIMATION_MS };
+
 /**
  * In-memory store of active rooms. Since this is a simple quiz-night app,
  * we don't need persistence - state lives for the lifetime of the process.
@@ -77,6 +90,7 @@ export class RoomManager {
         totalQuestions: 0,
         answeredCount: 0,
         activeLetters: null,
+        phaseDeadline: null,
       },
       selectedQuestions: [],
       pendingAnswers: new Map(),
@@ -227,6 +241,7 @@ export class RoomManager {
     internal.public.phase = "question";
     internal.public.currentQuestionIndex = 0;
     internal.public.answeredCount = 0;
+    internal.public.phaseDeadline = Date.now() + QUESTION_TIME_LIMIT_MS;
     internal.pendingAnswers.clear();
 
     return {
@@ -251,9 +266,28 @@ export class RoomManager {
     internal.public.currentQuestionIndex = 0;
     internal.public.answeredCount = 0;
     internal.public.activeLetters = letters;
+    // The countdown starts once the reveal animation finishes, not now -
+    // see activateLettersTimer(), scheduled by the caller.
+    internal.public.phaseDeadline = null;
     internal.letterSubmissions.clear();
 
     return { ok: true, room: internal.public, letters };
+  }
+
+  /**
+   * Starts the actual answer countdown for the letters round, once the
+   * reveal animation has had time to finish on clients. No-ops if the round
+   * has since moved on (host ended it early, etc).
+   */
+  activateLettersTimer(code: string): RoomState | undefined {
+    const internal = this.rooms.get(code);
+    if (!internal) return undefined;
+    if (internal.public.phase !== "question" || internal.public.round !== "letters") {
+      return undefined;
+    }
+
+    internal.public.phaseDeadline = Date.now() + LETTERS_TIME_LIMIT_MS;
+    return internal.public;
   }
 
   /** Letters round: locks in a player's word (one submission per player per round). */
@@ -262,6 +296,12 @@ export class RoomManager {
     if (!internal) return { ok: false, error: "Room not found." };
     if (internal.public.phase !== "question" || internal.public.round !== "letters") {
       return { ok: false, error: "Not accepting words right now." };
+    }
+    if (
+      internal.public.phaseDeadline !== null &&
+      Date.now() > internal.public.phaseDeadline
+    ) {
+      return { ok: false, error: "Time's up!" };
     }
     if (internal.letterSubmissions.has(playerId)) {
       return { ok: false, error: "You already locked in a word." };
@@ -304,6 +344,7 @@ export class RoomManager {
     }
 
     internal.public.phase = "reveal";
+    internal.public.phaseDeadline = null;
     internal.letterSubmissions.clear();
 
     return {
@@ -326,6 +367,7 @@ export class RoomManager {
     internal.public.currentQuestionIndex = nextIndex;
     internal.public.phase = "question";
     internal.public.answeredCount = 0;
+    internal.public.phaseDeadline = Date.now() + QUESTION_TIME_LIMIT_MS;
     internal.pendingAnswers.clear();
 
     return {
@@ -351,6 +393,7 @@ export class RoomManager {
     internal.public.totalQuestions = 0;
     internal.public.answeredCount = 0;
     internal.public.activeLetters = null;
+    internal.public.phaseDeadline = null;
     internal.selectedQuestions = [];
     internal.pendingAnswers.clear();
     internal.letterSubmissions.clear();
@@ -372,6 +415,7 @@ export class RoomManager {
     if (!question) return undefined;
 
     internal.public.phase = "reveal";
+    internal.public.phaseDeadline = null;
 
     // Apply score changes now that the answer is revealed, so scoreboards
     // don't spoil the answer while a question is still active.
@@ -390,6 +434,12 @@ export class RoomManager {
     if (!internal) return { ok: false, error: "Room not found." };
     if (internal.public.phase !== "question") {
       return { ok: false, error: "Not accepting answers right now." };
+    }
+    if (
+      internal.public.phaseDeadline !== null &&
+      Date.now() > internal.public.phaseDeadline
+    ) {
+      return { ok: false, error: "Time's up!" };
     }
     if (internal.pendingAnswers.has(playerId)) {
       return { ok: false, error: "You already answered this question." };
