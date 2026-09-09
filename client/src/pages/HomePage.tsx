@@ -6,9 +6,11 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import CastForEducationIcon from "@mui/icons-material/CastForEducation";
-import SmartphoneIcon from "@mui/icons-material/Smartphone";
-import TvIcon from "@mui/icons-material/Tv";
+import {
+  CastForEducation as CastForEducationIcon,
+  Smartphone as SmartphoneIcon,
+  Tv as TvIcon,
+} from "@mui/icons-material";
 
 export default function HomePage() {
   const navigate = useNavigate();

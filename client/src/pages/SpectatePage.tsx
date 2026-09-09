@@ -18,8 +18,10 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import {
+  ArrowBack as ArrowBackIcon,
+  EmojiEvents as EmojiEventsIcon,
+} from "@mui/icons-material";
 import type {
   LetterSubmission,
   Player,

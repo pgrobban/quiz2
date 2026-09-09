@@ -22,13 +22,15 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import SkipNextIcon from "@mui/icons-material/SkipNext";
-import MovieIcon from "@mui/icons-material/Movie";
-import FlagIcon from "@mui/icons-material/Flag";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
+import {
+  ArrowBack as ArrowBackIcon,
+  PlayArrow as PlayArrowIcon,
+  Visibility as VisibilityIcon,
+  SkipNext as SkipNextIcon,
+  Movie as MovieIcon,
+  Flag as FlagIcon,
+  StopCircle as StopCircleIcon,
+} from "@mui/icons-material";
 import type {
   GameRound,
   LetterSubmission,
