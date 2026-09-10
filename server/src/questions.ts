@@ -502,6 +502,54 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
       { left: { id: "m9-l9", text: "Rembrandt" }, right: { id: "m9-r9", text: "The Night Watch" } },
       { left: { id: "m9-l10", text: "Gustav Klimt" }, right: { id: "m9-r10", text: "The Kiss" } },
     ]
+  },
+  {
+    id: 'match-10',
+    title: "Games and their protagonists",
+    pairs: [
+      { left: { id: "m10-l1", text: "The Legend of Zelda" }, right: { id: "m10-r1", text: "Link" } },
+      { left: { id: "m10-l2", text: "The Last of Us" }, right: { id: "m10-r2", text: "Joel" } },
+      { left: { id: "m10-l3", text: "Halo" }, right: { id: "m10-r3", text: "Master Chief" } },
+      { left: { id: "m10-l4", text: "Tomb Raider" }, right: { id: "m10-r4", text: "Lara Croft" } },
+      { left: { id: "m10-l5", text: "Final Fantasy VII" }, right: { id: "m10-r5", text: "Cloud Strife" } },
+      { left: { id: "m10-l6", text: "Resident Evil" }, right: { id: "m10-r6", text: "Jill Valentine" } },
+      { left: { id: "m10-l7", text: "Metal Gear Solid" }, right: { id: "m10-r7", text: "Solid Snake" } },
+      { left: { id: "m10-l8", text: "God of War" }, right: { id: "m10-r8", text: "Kratos" } },
+      { left: { id: "m10-l9", text: "Assassin's Creed" }, right: { id: "m10-r9", text: "Ezio Auditore" } },
+      { left: { id: "m10-l10", text: "Overwatch" }, right: { id: "m10-r10", text: "Tracer" } },
+    ]
+  },
+  {
+    id: 'match-11',
+    title: "Words and names ending with -ix",
+    pairs: [
+      { left: { id: "m11-l1", text: "Matrix" }, right: { id: "m11-r1", text: "Movie" } },
+      { left: { id: "m11-l2", text: "Miraculix" }, right: { id: "m11-r2", text: "Character in Asterix" } },
+      { left: { id: "m11-l3", text: "Helix" }, right: { id: "m11-r3", text: "DNA structure" } },
+      { left: { id: "m11-l4", text: "Appendix" }, right: { id: "m11-r4", text: "Body part" } },
+      { left: { id: "m11-l5", text: "Calyx" }, right: { id: "m11-r5", text: "Part of a flower" } },
+      { left: { id: "m11-l6", text: "Dominatrix" }, right: { id: "m11-r6", text: "Person in control" } },
+      { left: { id: "m11-l7", text: "Transfix" }, right: { id: "m11-r7", text: "Verb" } },
+      { left: { id: "m11-l8", text: "Crucifix" }, right: { id: "m11-r8", text: "Religious symbol" } },
+      { left: { id: "m11-l9", text: "Suffix" }, right: { id: "m11-r9", text: "Word ending" } },
+      { left: { id: "m11-l10", text: "Phoenix Wright" }, right: { id: "m11-r10", text: "Video game character" } },
+    ]
+  },
+  {
+    id: 'match-12',
+    title: "Song names with women and their artists",
+    pairs: [
+      { left: { id: "m12-l1", text: "Roxanne" }, right: { id: "m12-r1", text: "The Police" } },
+      { left: { id: "m12-l2", text: "Jolene" }, right: { id: "m12-r2", text: "Dolly Parton" } },
+      { left: { id: "m12-l3", text: "Billie Jean" }, right: { id: "m12-r3", text: "Michael Jackson" } },
+      { left: { id: "m12-l4", text: "Lucy in the Sky with Diamonds" }, right: { id: "m12-r4", text: "The Beatles" } },
+      { left: { id: "m12-l5", text: "Sweet Caroline" }, right: { id: "m12-r5", text: "Neil Diamond" } },
+      { left: { id: "m12-l6", text: "Angie" }, right: { id: "m12-r6", text: "The Rolling Stones" } },
+      { left: { id: "m12-l7", text: "Eleanor Rigby" }, right: { id: "m12-r7", text: "The Beatles" } },
+      { left: { id: "m12-l8", text: "Layla" }, right: { id: "m12-r8", text: "Derek and the Dominos" } },
+      { left: { id: "m12-l9", text: "Mandy" }, right: { id: "m12-r9", text: "Barry Manilow" } },
+      { left: { id: "m12-l10", text: "Rhiannon" }, right: { id: "m12-r10", text: "Fleetwood Mac" } },
+    ]
   }
 ];
 

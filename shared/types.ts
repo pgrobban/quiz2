@@ -149,12 +149,12 @@ export interface ClientToServerEvents {
     callback: (
       response:
         | {
-            ok: true;
-            room: RoomState;
-            availableQuestions: QuestionBankItem[];
-            /** Populated instead of availableQuestions when round === "matching". */
-            availableMatchingBoards: MatchingBoardBankItem[];
-          }
+          ok: true;
+          room: RoomState;
+          availableQuestions: QuestionBankItem[];
+          /** Populated instead of availableQuestions when round === "matching". */
+          availableMatchingBoards: MatchingBoardBankItem[];
+        }
         | { ok: false; error: string }
     ) => void
   ) => void;
@@ -185,11 +185,11 @@ export interface ClientToServerEvents {
     callback: (
       response:
         | {
-            ok: true;
-            room: RoomState;
-            question: Question | null;
-            correctIndex: number | null;
-          }
+          ok: true;
+          room: RoomState;
+          question: Question | null;
+          correctIndex: number | null;
+        }
         | { ok: false; error: string }
     ) => void
   ) => void;
@@ -247,7 +247,7 @@ export interface ServerToClientEvents {
   "error-message": (payload: { message: string }) => void;
 }
 
-export interface InterServerEvents {}
+export interface InterServerEvents { }
 
 export interface SocketData {
   roomCode?: string;
