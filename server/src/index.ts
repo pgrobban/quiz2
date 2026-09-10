@@ -196,11 +196,19 @@ io.on("connection", (socket) => {
     if (!result.ok) return;
 
     io.to(code).emit("room:update", result.room);
-    io.to(code).emit("game:question", {
-      index: result.room.currentQuestionIndex,
-      total: result.room.totalQuestions,
-      question: result.question,
-    });
+    if (result.matchingBoard) {
+      io.to(code).emit("matching:board", {
+        index: result.room.currentQuestionIndex,
+        total: result.room.totalQuestions,
+        board: result.matchingBoard,
+      });
+    } else if (result.question) {
+      io.to(code).emit("game:question", {
+        index: result.room.currentQuestionIndex,
+        total: result.room.totalQuestions,
+        question: result.question,
+      });
+    }
   });
 
   socket.on("host:reveal-answer", ({ code }) => {
@@ -214,6 +222,19 @@ io.on("connection", (socket) => {
       io.to(code).emit("letters:revealed", {
         submissions: result.submissions,
         topWords: result.topWords,
+        players: result.room.players,
+      });
+      return;
+    }
+
+    if (room.round === "matching") {
+      const result = rooms.revealMatching(code);
+      if (!result) return;
+      io.to(code).emit("room:update", result.room);
+      io.to(code).emit("matching:revealed", {
+        index: result.room.currentQuestionIndex,
+        correctPairs: result.correctPairs,
+        results: result.results,
         players: result.room.players,
       });
       return;
@@ -240,6 +261,12 @@ io.on("connection", (socket) => {
     io.to(code).emit("room:update", result.room);
     if (result.roundEnded) {
       io.to(code).emit("game:round-ended", { players: result.room.players });
+    } else if (result.matchingBoard) {
+      io.to(code).emit("matching:board", {
+        index: result.room.currentQuestionIndex,
+        total: result.room.totalQuestions,
+        board: result.matchingBoard,
+      });
     } else if (result.question) {
       io.to(code).emit("game:question", {
         index: result.room.currentQuestionIndex,
@@ -283,6 +310,16 @@ io.on("connection", (socket) => {
 
   socket.on("player:submit-word", ({ code, word }, callback) => {
     const result = rooms.submitWord(code, socket.id, word);
+    callback(result);
+
+    if (result.ok) {
+      const room = rooms.getRoom(code);
+      if (room) io.to(code).emit("room:update", room);
+    }
+  });
+
+  socket.on("player:submit-matching-board", ({ code, pairs }, callback) => {
+    const result = rooms.submitMatchingBoard(code, socket.id, pairs);
     callback(result);
 
     if (result.ok) {

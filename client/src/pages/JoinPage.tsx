@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Chip,
@@ -19,6 +20,8 @@ import {
 } from "@mui/icons-material";
 import type {
   LetterSubmission,
+  MatchingBoard,
+  MatchingPlayerResult,
   Player,
   Question,
   RoomState,
@@ -34,6 +37,7 @@ type ViewState =
   | "introduction"
   | "question"
   | "letters"
+  | "matching"
   | "finished";
 
 export default function JoinPage() {
@@ -61,6 +65,18 @@ export default function JoinPage() {
     topWords: string[];
   } | null>(null);
 
+  // Matching round state. Pairs are entirely local/editable until the timer
+  // runs out, at which point the whole set is submitted to the server once.
+  const [activeMatchingBoard, setActiveMatchingBoard] = useState<MatchingBoard | null>(null);
+  const [stagedSide, setStagedSide] = useState<"left" | "right" | null>(null);
+  const [stagedId, setStagedId] = useState<string | null>(null);
+  const [pairs, setPairs] = useState<{ leftId: string; rightId: string }[]>([]);
+  const [matchingSubmitted, setMatchingSubmitted] = useState(false);
+  const [matchingRevealed, setMatchingRevealed] = useState<{
+    correctPairs: { leftId: string; rightId: string }[];
+    results: MatchingPlayerResult[];
+  } | null>(null);
+
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
       setRoom(updatedRoom);
@@ -75,6 +91,12 @@ export default function JoinPage() {
         setWordLocked(false);
         setLettersReveal(null);
         setTimeExpired(false);
+        setActiveMatchingBoard(null);
+        setStagedSide(null);
+        setStagedId(null);
+        setPairs([]);
+        setMatchingSubmitted(false);
+        setMatchingRevealed(null);
         setViewState("lobby");
       } else if (updatedRoom.phase === "introduction") {
         setViewState("introduction");
@@ -111,6 +133,24 @@ export default function JoinPage() {
       setLettersReveal(payload);
     }
 
+    function onMatchingBoard(payload: { board: MatchingBoard }) {
+      setActiveMatchingBoard(payload.board);
+      setStagedSide(null);
+      setStagedId(null);
+      setPairs([]);
+      setMatchingSubmitted(false);
+      setMatchingRevealed(null);
+      setTimeExpired(false);
+      setViewState("matching");
+    }
+
+    function onMatchingRevealed(payload: {
+      correctPairs: { leftId: string; rightId: string }[];
+      results: MatchingPlayerResult[];
+    }) {
+      setMatchingRevealed(payload);
+    }
+
     function onFinished(payload: { players: Player[] }) {
       setFinalPlayers(payload.players);
       setViewState("finished");
@@ -128,6 +168,8 @@ export default function JoinPage() {
     socket.on("game:reveal", onReveal);
     socket.on("letters:started", onLettersStarted);
     socket.on("letters:revealed", onLettersRevealed);
+    socket.on("matching:board", onMatchingBoard);
+    socket.on("matching:revealed", onMatchingRevealed);
     socket.on("game:finished", onFinished);
     socket.on("room:closed", onRoomClosed);
 
@@ -137,6 +179,8 @@ export default function JoinPage() {
       socket.off("game:reveal", onReveal);
       socket.off("letters:started", onLettersStarted);
       socket.off("letters:revealed", onLettersRevealed);
+      socket.off("matching:board", onMatchingBoard);
+      socket.off("matching:revealed", onMatchingRevealed);
       socket.off("game:finished", onFinished);
       socket.off("room:closed", onRoomClosed);
     };
@@ -232,10 +276,66 @@ export default function JoinPage() {
     setWordIndices((prev) => [...prev, index]);
   };
 
-  /** Taps a letter already in the word box to send it back to the pool. */
+    /** Taps a letter already in the word box to send it back to the pool. */
   const handleTapBoxLetter = (position: number) => {
     if (wordLocked || timeExpired) return;
     setWordIndices((prev) => prev.filter((_, i) => i !== position));
+  };
+
+  // Once the timer runs out, submit whatever pairs the player has settled on
+  // (even if incomplete) exactly once. Deliberately not deadline-gated
+  // server-side, to avoid a network-latency race rejecting this.
+  useEffect(() => {
+    if (!timeExpired || !room || !activeMatchingBoard || matchingSubmitted) return;
+    setMatchingSubmitted(true);
+    socket.emit(
+      "player:submit-matching-board",
+      { code: room.code, pairs },
+      (response) => {
+        if (!response.ok) setErrorMessage(response.error);
+      }
+    );
+    // Intentionally only re-run when timeExpired flips true; `pairs` is read
+    // at that moment via closure (the player's final answer).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeExpired]);
+
+  /**
+   * Taps an item in either matching column. Tapping an already-paired item
+   * un-pairs it (so players can freely change their mind). Otherwise, the
+   * first tap stages an item and the next tap (in the other column)
+   * completes the pair - all purely local until time runs out.
+   */
+  const handleTapMatchingItem = (side: "left" | "right", id: string) => {
+    if (timeExpired || matchingRevealed || matchingSubmitted) return;
+
+    const existingIndex = pairs.findIndex((p) =>
+      side === "left" ? p.leftId === id : p.rightId === id
+    );
+    if (existingIndex !== -1) {
+      setPairs((prev) => prev.filter((_, i) => i !== existingIndex));
+      return;
+    }
+
+    if (stagedSide === side) {
+      // Tapping within the same column: toggle/switch the staged item.
+      setStagedId((prev) => (prev === id ? null : id));
+      setStagedSide((prev) => (stagedId === id ? null : prev));
+      return;
+    }
+
+    if (stagedSide === null || stagedId === null) {
+      setStagedSide(side);
+      setStagedId(id);
+      return;
+    }
+
+    // Opposite column tapped while something is staged: complete the pair.
+    const leftId = side === "left" ? id : stagedId;
+    const rightId = side === "right" ? id : stagedId;
+    setStagedSide(null);
+    setStagedId(null);
+    setPairs((prev) => [...prev, { leftId, rightId }]);
   };
 
   const myScore = room?.players.find((p) => p.id === socket.id)?.score ?? 0;
@@ -539,6 +639,117 @@ export default function JoinPage() {
                       <Chip key={word} label={word.toUpperCase()} color="success" />
                     ))}
                   </Stack>
+                </Stack>
+              )}
+            </Paper>
+          </>
+        )}
+
+        {viewState === "matching" && room && activeMatchingBoard && (
+          <>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="overline" color="text.secondary">
+                Matching Round
+              </Typography>
+              <Chip label={`${myScore} pts`} color="primary" size="small" />
+            </Stack>
+
+            <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+              {room.phaseDeadline !== null && (
+                <Box sx={{ mb: 2 }}>
+                  <CountdownBar
+                    deadline={room.phaseDeadline}
+                    totalSeconds={90}
+                    onExpire={() => setTimeExpired(true)}
+                  />
+                </Box>
+              )}
+
+              <Typography color="text.secondary" textAlign="center" sx={{ mb: 2 }}>
+                {matchingSubmitted
+                  ? "Submitted!"
+                  : `Paired ${pairs.length} / ${activeMatchingBoard.left.length} - tap a pair again to undo`}
+              </Typography>
+
+              <Stack direction="row" spacing={1.5}>
+                <Stack spacing={1} flex={1}>
+                  {activeMatchingBoard.left.map((item) => {
+                    const pairIndex = pairs.findIndex((p) => p.leftId === item.id);
+                    const isStaged = stagedSide === "left" && stagedId === item.id;
+                    return (
+                      <Badge
+                        key={item.id}
+                        badgeContent={pairIndex + 1}
+                        invisible={pairIndex === -1}
+                        color="secondary"
+                        sx={{ width: "100%" }}
+                      >
+                        <Button
+                          variant={
+                            pairIndex !== -1 ? "contained" : isStaged ? "contained" : "outlined"
+                          }
+                          color={pairIndex !== -1 ? "secondary" : "primary"}
+                          fullWidth
+                          disabled={timeExpired || !!matchingRevealed || matchingSubmitted}
+                          onClick={() => handleTapMatchingItem("left", item.id)}
+                          sx={{ fontSize: "0.8rem", py: 1, textTransform: "none" }}
+                        >
+                          {item.text}
+                        </Button>
+                      </Badge>
+                    );
+                  })}
+                </Stack>
+                <Stack spacing={1} flex={1}>
+                  {activeMatchingBoard.right.map((item) => {
+                    const pairIndex = pairs.findIndex((p) => p.rightId === item.id);
+                    const isStaged = stagedSide === "right" && stagedId === item.id;
+                    return (
+                      <Badge
+                        key={item.id}
+                        badgeContent={pairIndex + 1}
+                        invisible={pairIndex === -1}
+                        color="secondary"
+                        sx={{ width: "100%" }}
+                      >
+                        <Button
+                          variant={
+                            pairIndex !== -1 ? "contained" : isStaged ? "contained" : "outlined"
+                          }
+                          color={pairIndex !== -1 ? "secondary" : "primary"}
+                          fullWidth
+                          disabled={timeExpired || !!matchingRevealed || matchingSubmitted}
+                          onClick={() => handleTapMatchingItem("right", item.id)}
+                          sx={{ fontSize: "0.8rem", py: 1, textTransform: "none" }}
+                        >
+                          {item.text}
+                        </Button>
+                      </Badge>
+                    );
+                  })}
+                </Stack>
+              </Stack>
+
+              {matchingSubmitted && !matchingRevealed && (
+                <Typography color="text.secondary" textAlign="center" sx={{ mt: 2 }}>
+                  Waiting for the host to reveal...
+                </Typography>
+              )}
+
+              {matchingRevealed && (
+                <Stack spacing={1} sx={{ mt: 3 }}>
+                  {(() => {
+                    const mine = matchingRevealed.results.find(
+                      (r) => r.playerId === socket.id
+                    );
+                    if (!mine) return null;
+                    return (
+                      <Alert severity={mine.correctCount > 0 ? "success" : "info"}>
+                        You matched {mine.correctCount} / {activeMatchingBoard.left.length}{" "}
+                        correctly - +{mine.points} points
+                      </Alert>
+                    );
+                  })()}
                 </Stack>
               )}
             </Paper>

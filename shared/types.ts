@@ -53,6 +53,8 @@ export interface RoomState {
   answeredCount: number;
   /** The 12 generated letters for the "letters" round, while it's active/revealed. Null otherwise. */
   activeLetters: string[] | null;
+  /** The active two-column board for the "matching" round, while active/revealed. Null otherwise. */
+  activeMatchingBoard: MatchingBoard | null;
   /**
    * Epoch ms when the current question/letters round's answer window closes.
    * Null when there's no active countdown (lobby, introduction, reveal, finished).
@@ -88,6 +90,54 @@ export interface LettersRevealPayload {
   players: Player[];
 }
 
+/** A single item shown in one column of a "matching" round board. */
+export interface MatchingItem {
+  id: string;
+  text: string;
+}
+
+/** Two independently-shuffled columns of 10 items each, forming 10 true left/right pairs. */
+export interface MatchingBoard {
+  left: MatchingItem[];
+  right: MatchingItem[];
+}
+
+/** Host-only view of a matching board: the 10 true pairs, before shuffling into columns. */
+export interface MatchingBoardBankItem {
+  id: string;
+  title: string;
+  pairs: { left: MatchingItem; right: MatchingItem }[];
+}
+
+export interface MatchingBoardPayload {
+  index: number;
+  total: number;
+  board: MatchingBoard;
+}
+
+/** One guess a player locked in (tapped a left item, then a right item). */
+export interface MatchingGuess {
+  leftId: string;
+  rightId: string;
+  correct: boolean;
+}
+
+export interface MatchingPlayerResult {
+  playerId: string;
+  playerName: string;
+  guesses: MatchingGuess[];
+  correctCount: number;
+  points: number;
+}
+
+export interface MatchingRevealPayload {
+  index: number;
+  /** The true answer key: which left id pairs with which right id. */
+  correctPairs: { leftId: string; rightId: string }[];
+  results: MatchingPlayerResult[];
+  players: Player[];
+}
+
 export interface ClientToServerEvents {
   "host:create-room": (
     callback: (response: { ok: true; room: RoomState } | { ok: false; error: string }) => void
@@ -98,12 +148,22 @@ export interface ClientToServerEvents {
     payload: { code: string; round: GameRound },
     callback: (
       response:
-        | { ok: true; room: RoomState; availableQuestions: QuestionBankItem[] }
+        | {
+            ok: true;
+            room: RoomState;
+            availableQuestions: QuestionBankItem[];
+            /** Populated instead of availableQuestions when round === "matching". */
+            availableMatchingBoards: MatchingBoardBankItem[];
+          }
         | { ok: false; error: string }
     ) => void
   ) => void;
 
-  /** Host picks which questions (and in what order) to use for the selected round. */
+  /**
+   * Host picks (and orders) which items to use for the selected round -
+   * question ids for quiz-style rounds, or matching board ids for the
+   * "matching" round.
+   */
   "host:select-question": (
     payload: { code: string; questionIds: string[] },
     callback: (response: { ok: true; room: RoomState } | { ok: false; error: string }) => void
@@ -159,6 +219,12 @@ export interface ClientToServerEvents {
     callback: (response: { ok: true } | { ok: false; error: string }) => void
   ) => void;
 
+  /** Matching round: submit the player's final set of left/right pairings (sent once, when time runs out). */
+  "player:submit-matching-board": (
+    payload: { code: string; pairs: { leftId: string; rightId: string }[] },
+    callback: (response: { ok: true } | { ok: false; error: string }) => void
+  ) => void;
+
   "player:leave-room": (payload: { code: string }) => void;
 }
 
@@ -170,6 +236,10 @@ export interface ServerToClientEvents {
   "letters:started": (payload: { letters: string[] }) => void;
   /** Letters round: submitted words have been scored and the best possible words computed. */
   "letters:revealed": (payload: LettersRevealPayload) => void;
+  /** Matching round: a new two-column board is active. */
+  "matching:board": (payload: MatchingBoardPayload) => void;
+  /** Matching round: the correct pair + everyone's guesses have been scored. */
+  "matching:revealed": (payload: MatchingRevealPayload) => void;
   /** The current round's questions have all been played (or the host ended it early). */
   "game:round-ended": (payload: { players: Player[] }) => void;
   "game:finished": (payload: { players: Player[] }) => void;

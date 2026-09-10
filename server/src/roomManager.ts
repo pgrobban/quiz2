@@ -2,27 +2,43 @@ import { randomInt } from "node:crypto";
 import type {
   GameRound,
   LetterSubmission,
+  MatchingBoard,
+  MatchingBoardBankItem,
+  MatchingGuess,
+  MatchingPlayerResult,
   Player,
   Question,
   QuestionBankItem,
   RoomState,
 } from "../../shared/types";
-import { QUESTION_BANK, ROUND_CATALOG, QuestionWithAnswer, toPublicQuestion } from "./questions";
+import {
+  MATCHING_BANK,
+  QUESTION_BANK,
+  ROUND_CATALOG,
+  QuestionWithAnswer,
+  toPublicMatchingBoard,
+  toPublicQuestion,
+} from "./questions";
 import { canFormWord, findTopWords, generateLetters, isDictionaryWord } from "./letters";
 
 interface InternalRoom {
   public: RoomState;
   /** Ordered subset of the round's question bank the host chose to play, with answers. */
   selectedQuestions: QuestionWithAnswer[];
+  /** Ordered subset of the matching round's board bank the host chose to play, with answer keys. */
+  selectedMatchingBoards: MatchingBoardBankItem[];
   /** playerId -> whether their submitted answer for the *current* question was correct. */
   pendingAnswers: Map<string, boolean>;
   /** playerId -> the word they've locked in for the current letters round. */
   letterSubmissions: Map<string, string>;
+  /** playerId -> the pairs they've locked in so far for the current matching board. */
+  matchingGuesses: Map<string, MatchingGuess[]>;
 }
 
 export interface AdvanceResult {
   room: RoomState;
   question?: Question;
+  matchingBoard?: MatchingBoard;
   roundEnded: boolean;
 }
 
@@ -37,20 +53,32 @@ export interface LettersRevealResult {
   topWords: string[];
 }
 
+export interface MatchingRevealResult {
+  room: RoomState;
+  correctPairs: { leftId: string; rightId: string }[];
+  results: MatchingPlayerResult[];
+}
+
 export type SubmitAnswerResult =
   | { ok: true; correct: boolean }
   | { ok: false; error: string };
 
 export type SubmitWordResult = { ok: true } | { ok: false; error: string };
 
+export type SubmitMatchingBoardResult = { ok: true } | { ok: false; error: string };
+
 const POINTS_PER_CORRECT_ANSWER = 100;
 /** Points awarded per letter of a valid word in the letters round (an 8-letter word = 80pts). */
 const POINTS_PER_LETTER = 10;
+/** Points awarded per correctly-matched pair in the matching round. */
+const POINTS_PER_CORRECT_PAIR = 100;
 
 /** How long players have to answer a standard multiple-choice question. */
 const QUESTION_TIME_LIMIT_MS = 15_000;
 /** How long players have to build and lock in a word for the letters round. */
 const LETTERS_TIME_LIMIT_MS = 60_000;
+/** How long players have to match as many pairs as they can in the matching round. */
+const MATCHING_TIME_LIMIT_MS = 90_000;
 /**
  * How long the client-side letter reveal animation takes (12 letters x 3s
  * each - see client/src/components/LetterReveal.tsx). The answer timer
@@ -90,11 +118,14 @@ export class RoomManager {
         totalQuestions: 0,
         answeredCount: 0,
         activeLetters: null,
+        activeMatchingBoard: null,
         phaseDeadline: null,
       },
       selectedQuestions: [],
+      selectedMatchingBoards: [],
       pendingAnswers: new Map(),
       letterSubmissions: new Map(),
+      matchingGuesses: new Map(),
     };
     this.rooms.set(code, room);
     return room.public;
@@ -136,6 +167,7 @@ export class RoomManager {
     internal.public.players = internal.public.players.filter((p) => p.id !== playerId);
     internal.pendingAnswers.delete(playerId);
     internal.letterSubmissions.delete(playerId);
+    internal.matchingGuesses.delete(playerId);
     return internal.public;
   }
 
@@ -147,11 +179,18 @@ export class RoomManager {
     );
   }
 
-  /** Host picks which round to play next; returns that round's full question bank to choose from. */
+  /** Host picks which round to play next; returns that round's full question/board bank to choose from. */
   selectRound(
     code: string,
     round: GameRound
-  ): { ok: true; room: RoomState; availableQuestions: QuestionBankItem[] } | { ok: false; error: string } {
+  ):
+    | {
+        ok: true;
+        room: RoomState;
+        availableQuestions: QuestionBankItem[];
+        availableMatchingBoards: MatchingBoardBankItem[];
+      }
+    | { ok: false; error: string } {
     const internal = this.rooms.get(code);
     if (!internal) return { ok: false, error: "Room not found." };
     if (internal.public.phase !== "lobby") {
@@ -163,25 +202,38 @@ export class RoomManager {
     internal.public.currentQuestionIndex = -1;
     internal.public.totalQuestions = 0;
     internal.public.activeLetters = null;
+    internal.public.activeMatchingBoard = null;
     internal.selectedQuestions = [];
+    internal.selectedMatchingBoards = [];
     internal.pendingAnswers.clear();
     internal.letterSubmissions.clear();
+    internal.matchingGuesses.clear();
 
     if (round === "letters") {
       // The letters round is procedurally generated - there's no bank of
       // questions for the host to pick from, so it's immediately "ready".
       internal.public.totalQuestions = 1;
-      return { ok: true, room: internal.public, availableQuestions: [] };
+      return { ok: true, room: internal.public, availableQuestions: [], availableMatchingBoards: [] };
+    }
+
+    if (round === "matching") {
+      return {
+        ok: true,
+        room: internal.public,
+        availableQuestions: [],
+        availableMatchingBoards: MATCHING_BANK,
+      };
     }
 
     return {
       ok: true,
       room: internal.public,
       availableQuestions: QUESTION_BANK[round],
+      availableMatchingBoards: [],
     };
   }
 
-  /** Host picks (and orders) which questions from the selected round's bank to play. */
+  /** Host picks (and orders) which questions/boards from the selected round's bank to play. */
   selectQuestions(
     code: string,
     questionIds: string[]
@@ -196,6 +248,19 @@ export class RoomManager {
     }
     if (questionIds.length === 0) {
       return { ok: false, error: "Select at least one question." };
+    }
+
+    if (internal.public.round === "matching") {
+      const bank = new Map(MATCHING_BANK.map((b) => [b.id, b]));
+      const selected: MatchingBoardBankItem[] = [];
+      for (const id of questionIds) {
+        const board = bank.get(id);
+        if (!board) return { ok: false, error: `Unknown board id: ${id}` };
+        selected.push(board);
+      }
+      internal.selectedMatchingBoards = selected;
+      internal.public.totalQuestions = selected.length;
+      return { ok: true, room: internal.public };
     }
 
     const bank = QUESTION_BANK[internal.public.round];
@@ -228,10 +293,12 @@ export class RoomManager {
     return { ok: true, room: internal.public };
   }
 
-  /** Moves from the tutorial screen to the first question of the round. */
+  /** Moves from the tutorial screen to the first question (or matching board) of the round. */
   startFirstQuestion(
     code: string
-  ): { ok: true; room: RoomState; question: Question } | { ok: false; error: string } {
+  ):
+    | { ok: true; room: RoomState; question?: Question; matchingBoard?: MatchingBoard }
+    | { ok: false; error: string } {
     const internal = this.rooms.get(code);
     if (!internal) return { ok: false, error: "Room not found." };
     if (internal.public.phase !== "introduction") {
@@ -241,6 +308,15 @@ export class RoomManager {
     internal.public.phase = "question";
     internal.public.currentQuestionIndex = 0;
     internal.public.answeredCount = 0;
+
+    if (internal.public.round === "matching") {
+      const board = toPublicMatchingBoard(internal.selectedMatchingBoards[0]);
+      internal.public.activeMatchingBoard = board;
+      internal.public.phaseDeadline = Date.now() + MATCHING_TIME_LIMIT_MS;
+      internal.matchingGuesses.clear();
+      return { ok: true, room: internal.public, matchingBoard: board };
+    }
+
     internal.public.phaseDeadline = Date.now() + QUESTION_TIME_LIMIT_MS;
     internal.pendingAnswers.clear();
 
@@ -358,8 +434,13 @@ export class RoomManager {
     const internal = this.rooms.get(code);
     if (!internal) return undefined;
 
+    const isMatching = internal.public.round === "matching";
+    const totalItems = isMatching
+      ? internal.selectedMatchingBoards.length
+      : internal.selectedQuestions.length;
+
     const nextIndex = internal.public.currentQuestionIndex + 1;
-    if (nextIndex >= internal.selectedQuestions.length) {
+    if (nextIndex >= totalItems) {
       this.resetToLobby(internal);
       return { room: internal.public, roundEnded: true };
     }
@@ -367,6 +448,15 @@ export class RoomManager {
     internal.public.currentQuestionIndex = nextIndex;
     internal.public.phase = "question";
     internal.public.answeredCount = 0;
+
+    if (isMatching) {
+      const board = toPublicMatchingBoard(internal.selectedMatchingBoards[nextIndex]);
+      internal.public.activeMatchingBoard = board;
+      internal.public.phaseDeadline = Date.now() + MATCHING_TIME_LIMIT_MS;
+      internal.matchingGuesses.clear();
+      return { room: internal.public, matchingBoard: board, roundEnded: false };
+    }
+
     internal.public.phaseDeadline = Date.now() + QUESTION_TIME_LIMIT_MS;
     internal.pendingAnswers.clear();
 
@@ -393,10 +483,13 @@ export class RoomManager {
     internal.public.totalQuestions = 0;
     internal.public.answeredCount = 0;
     internal.public.activeLetters = null;
+    internal.public.activeMatchingBoard = null;
     internal.public.phaseDeadline = null;
     internal.selectedQuestions = [];
+    internal.selectedMatchingBoards = [];
     internal.pendingAnswers.clear();
     internal.letterSubmissions.clear();
+    internal.matchingGuesses.clear();
   }
 
   /** Ends the whole game (all rounds) and freezes the final scoreboard. */
@@ -453,6 +546,89 @@ export class RoomManager {
     internal.public.answeredCount = internal.pendingAnswers.size;
 
     return { ok: true, correct };
+  }
+
+  /**
+   * Matching round: submits a player's final set of left/right pairings in
+   * one go (sent once, when their local timer runs out - see
+   * client/src/pages/JoinPage.tsx). Players can freely change their minds
+   * client-side beforehand since nothing is locked in until this call.
+   * Gated on the round still being in its "question" phase rather than the
+   * exact deadline timestamp, since this is inherently a "time's up" event
+   * and we don't want a network-latency race to spuriously reject it.
+   */
+  submitMatchingBoard(
+    code: string,
+    playerId: string,
+    pairs: { leftId: string; rightId: string }[]
+  ): SubmitMatchingBoardResult {
+    const internal = this.rooms.get(code);
+    if (!internal) return { ok: false, error: "Room not found." };
+    if (internal.public.phase !== "question" || internal.public.round !== "matching") {
+      return { ok: false, error: "Not accepting answers right now." };
+    }
+    if (internal.matchingGuesses.has(playerId)) {
+      return { ok: false, error: "You've already submitted your answers." };
+    }
+
+    const board = internal.selectedMatchingBoards[internal.public.currentQuestionIndex];
+    if (!board) return { ok: false, error: "No active board." };
+
+    const validLeftIds = new Set(board.pairs.map((p) => p.left.id));
+    const validRightIds = new Set(board.pairs.map((p) => p.right.id));
+    const seenLeft = new Set<string>();
+    const seenRight = new Set<string>();
+
+    const guesses: MatchingGuess[] = [];
+    for (const { leftId, rightId } of pairs) {
+      if (!validLeftIds.has(leftId) || !validRightIds.has(rightId)) continue;
+      if (seenLeft.has(leftId) || seenRight.has(rightId)) continue;
+      seenLeft.add(leftId);
+      seenRight.add(rightId);
+
+      const correct = board.pairs.some((p) => p.left.id === leftId && p.right.id === rightId);
+      guesses.push({ leftId, rightId, correct });
+    }
+
+    internal.matchingGuesses.set(playerId, guesses);
+    internal.public.answeredCount = internal.matchingGuesses.size;
+
+    return { ok: true };
+  }
+
+  /** Matching round: scores every player's locked-in guesses for the current board. */
+  revealMatching(code: string): MatchingRevealResult | undefined {
+    const internal = this.rooms.get(code);
+    if (!internal) return undefined;
+
+    const board = internal.selectedMatchingBoards[internal.public.currentQuestionIndex];
+    if (!board) return undefined;
+
+    const results: MatchingPlayerResult[] = [];
+    for (const player of internal.public.players) {
+      const guesses = internal.matchingGuesses.get(player.id) ?? [];
+      const correctCount = guesses.filter((g) => g.correct).length;
+      const points = correctCount * POINTS_PER_CORRECT_PAIR;
+      if (points > 0) player.score += points;
+
+      results.push({
+        playerId: player.id,
+        playerName: player.name,
+        guesses,
+        correctCount,
+        points,
+      });
+    }
+
+    internal.public.phase = "reveal";
+    internal.public.phaseDeadline = null;
+    internal.matchingGuesses.clear();
+
+    return {
+      room: internal.public,
+      correctPairs: board.pairs.map((p) => ({ leftId: p.left.id, rightId: p.right.id })),
+      results,
+    };
   }
 
   closeRoom(code: string): void {

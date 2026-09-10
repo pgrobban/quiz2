@@ -34,6 +34,9 @@ import {
 import type {
   GameRound,
   LetterSubmission,
+  MatchingBoard,
+  MatchingBoardBankItem,
+  MatchingPlayerResult,
   Question,
   QuestionBankItem,
   RoomState,
@@ -68,11 +71,22 @@ export default function HostPage() {
     topWords: string[];
   } | null>(null);
 
+  // Matching round state.
+  const [activeMatchingBoard, setActiveMatchingBoard] = useState<MatchingBoard | null>(null);
+  const [matchingRevealed, setMatchingRevealed] = useState<{
+    correctPairs: { leftId: string; rightId: string }[];
+    results: MatchingPlayerResult[];
+  } | null>(null);
+
   // Round/question selection (host-only, not part of shared room state).
   const [availableQuestions, setAvailableQuestions] = useState<
     QuestionBankItem[] | null
   >(null);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [availableMatchingBoards, setAvailableMatchingBoards] = useState<
+    MatchingBoardBankItem[] | null
+  >(null);
+  const [selectedMatchingBoardIds, setSelectedMatchingBoardIds] = useState<string[]>([]);
 
   useEffect(() => {
     socket.connect();
@@ -114,13 +128,28 @@ export default function HostPage() {
       setLettersRevealed(payload);
     }
 
+    function onMatchingBoard(payload: { board: MatchingBoard }) {
+      setActiveMatchingBoard(payload.board);
+      setMatchingRevealed(null);
+    }
+
+    function onMatchingRevealed(payload: {
+      correctPairs: { leftId: string; rightId: string }[];
+      results: MatchingPlayerResult[];
+    }) {
+      setMatchingRevealed(payload);
+    }
+
     function onRoundEnded() {
       setQuestion(null);
       setCorrectIndex(null);
       setActiveLetters(null);
       setLettersRevealed(null);
+      setActiveMatchingBoard(null);
+      setMatchingRevealed(null);
       setAvailableQuestions(null);
       setSelectedQuestionIds([]);
+      setAvailableMatchingBoards(null);
     }
 
     function onConnectError() {
@@ -134,6 +163,8 @@ export default function HostPage() {
     socket.on("game:reveal", onReveal);
     socket.on("letters:started", onLettersStarted);
     socket.on("letters:revealed", onLettersRevealed);
+    socket.on("matching:board", onMatchingBoard);
+    socket.on("matching:revealed", onMatchingRevealed);
     socket.on("game:round-ended", onRoundEnded);
     socket.on("connect_error", onConnectError);
 
@@ -144,6 +175,8 @@ export default function HostPage() {
       socket.off("game:reveal", onReveal);
       socket.off("letters:started", onLettersStarted);
       socket.off("letters:revealed", onLettersRevealed);
+      socket.off("matching:board", onMatchingBoard);
+      socket.off("matching:revealed", onMatchingRevealed);
       socket.off("game:round-ended", onRoundEnded);
       socket.off("connect_error", onConnectError);
       socket.disconnect();
@@ -157,6 +190,8 @@ export default function HostPage() {
         setRoom(response.room);
         setAvailableQuestions(response.availableQuestions);
         setSelectedQuestionIds(response.availableQuestions.map((q) => q.id));
+        setAvailableMatchingBoards(response.availableMatchingBoards);
+        setSelectedMatchingBoardIds(response.availableMatchingBoards.map((b) => b.id));
       } else {
         setErrorMessage(response.error);
       }
@@ -169,11 +204,18 @@ export default function HostPage() {
     );
   };
 
+  const toggleMatchingBoard = (id: string) => {
+    setSelectedMatchingBoardIds((prev) =>
+      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id]
+    );
+  };
+
   const handleConfirmQuestions = () => {
     if (!room) return;
+    const ids = room.round === "matching" ? selectedMatchingBoardIds : selectedQuestionIds;
     socket.emit(
       "host:select-question",
-      { code: room.code, questionIds: selectedQuestionIds },
+      { code: room.code, questionIds: ids },
       (response) => {
         if (response.ok) {
           setRoom(response.room);
@@ -187,6 +229,8 @@ export default function HostPage() {
   const handleChangeRound = () => {
     setAvailableQuestions(null);
     setSelectedQuestionIds([]);
+    setAvailableMatchingBoards(null);
+    setSelectedMatchingBoardIds([]);
     if (room) setRoom({ ...room, round: null, roundInfo: null, totalQuestions: 0 });
   };
 
@@ -349,7 +393,7 @@ export default function HostPage() {
               </Paper>
             )}
 
-            {roundChosenButNoQuestions && availableQuestions && (
+            {roundChosenButNoQuestions && availableQuestions && room.round !== "matching" && (
               <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
                 <Stack
                   direction="row"
@@ -389,6 +433,48 @@ export default function HostPage() {
                 >
                   Confirm {selectedQuestionIds.length} Question
                   {selectedQuestionIds.length === 1 ? "" : "s"}
+                </Button>
+              </Paper>
+            )}
+
+            {roundChosenButNoQuestions && availableMatchingBoards && room.round === "matching" && (
+              <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  sx={{ mb: 1 }}
+                >
+                  <Typography variant="h6">Pick Boards</Typography>
+                  <Button size="small" onClick={handleChangeRound}>
+                    Change Round
+                  </Button>
+                </Stack>
+                <List dense>
+                  {availableMatchingBoards.map((board) => (
+                    <ListItem key={board.id} disablePadding>
+                      <FormControlLabel
+                        sx={{ px: 1, width: "100%" }}
+                        control={
+                          <Checkbox
+                            checked={selectedMatchingBoardIds.includes(board.id)}
+                            onChange={() => toggleMatchingBoard(board.id)}
+                          />
+                        }
+                        label={`${board.title} (${board.pairs.length} pairs)`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  disabled={selectedMatchingBoardIds.length === 0}
+                  onClick={handleConfirmQuestions}
+                  sx={{ mt: 1 }}
+                >
+                  Confirm {selectedMatchingBoardIds.length} Board
+                  {selectedMatchingBoardIds.length === 1 ? "" : "s"}
                 </Button>
               </Paper>
             )}
@@ -562,6 +648,100 @@ export default function HostPage() {
                           <Chip key={word} label={word.toUpperCase()} color="success" />
                         ))}
                       </Stack>
+                    </>
+                  )}
+                </Paper>
+              )}
+
+            {(room.phase === "question" || room.phase === "reveal") &&
+              room.round === "matching" &&
+              activeMatchingBoard && (
+                <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 2 }}
+                  >
+                    <Typography variant="overline" color="text.secondary">
+                      Matching Round · Board {room.currentQuestionIndex + 1} of{" "}
+                      {room.totalQuestions}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={`${room.answeredCount} / ${room.players.length} finished`}
+                    />
+                  </Stack>
+
+                  {room.phaseDeadline !== null && (
+                    <Box sx={{ mb: 2 }}>
+                      <CountdownBar deadline={room.phaseDeadline} totalSeconds={90} />
+                    </Box>
+                  )}
+
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <Stack spacing={1}>
+                        {activeMatchingBoard.left.map((item) => (
+                          <Paper
+                            key={item.id}
+                            variant="outlined"
+                            sx={{ p: 1, textAlign: "center", fontSize: "0.9rem" }}
+                          >
+                            {item.text}
+                          </Paper>
+                        ))}
+                      </Stack>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Stack spacing={1}>
+                        {activeMatchingBoard.right.map((item) => (
+                          <Paper
+                            key={item.id}
+                            variant="outlined"
+                            sx={{ p: 1, textAlign: "center", fontSize: "0.9rem" }}
+                          >
+                            {item.text}
+                          </Paper>
+                        ))}
+                      </Stack>
+                    </Grid>
+                  </Grid>
+
+                  {matchingRevealed && (
+                    <>
+                      <Typography variant="subtitle1" sx={{ mt: 3, mb: 1 }}>
+                        Correct Pairs
+                      </Typography>
+                      <Stack spacing={0.5}>
+                        {matchingRevealed.correctPairs.map((pair) => {
+                          const leftText = activeMatchingBoard.left.find(
+                            (i) => i.id === pair.leftId
+                          )?.text;
+                          const rightText = activeMatchingBoard.right.find(
+                            (i) => i.id === pair.rightId
+                          )?.text;
+                          return (
+                            <Typography key={pair.leftId} variant="body2" color="success.main">
+                              {leftText} ↔ {rightText}
+                            </Typography>
+                          );
+                        })}
+                      </Stack>
+
+                      <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+                        Player Results
+                      </Typography>
+                      <List dense>
+                        {matchingRevealed.results.map((result) => (
+                          <ListItem key={result.playerId}>
+                            <ListItemText
+                              primary={result.playerName}
+                              secondary={`${result.correctCount} / ${activeMatchingBoard.left.length} correct - +${result.points} pts`}
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
                     </>
                   )}
                 </Paper>

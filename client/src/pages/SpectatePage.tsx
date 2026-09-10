@@ -24,6 +24,7 @@ import {
 } from "@mui/icons-material";
 import type {
   LetterSubmission,
+  MatchingPlayerResult,
   Player,
   Question,
   RoomState,
@@ -46,6 +47,10 @@ export default function SpectatePage() {
     submissions: LetterSubmission[];
     topWords: string[];
   } | null>(null);
+  const [matchingRevealed, setMatchingRevealed] = useState<{
+    correctPairs: { leftId: string; rightId: string }[];
+    results: MatchingPlayerResult[];
+  } | null>(null);
 
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
@@ -54,6 +59,7 @@ export default function SpectatePage() {
         setQuestion(null);
         setCorrectIndex(null);
         setLettersReveal(null);
+        setMatchingRevealed(null);
       }
     }
 
@@ -73,6 +79,13 @@ export default function SpectatePage() {
       setLettersReveal(payload);
     }
 
+    function onMatchingRevealed(payload: {
+      correctPairs: { leftId: string; rightId: string }[];
+      results: MatchingPlayerResult[];
+    }) {
+      setMatchingRevealed(payload);
+    }
+
     function onFinished() {
       setQuestion(null);
     }
@@ -88,6 +101,7 @@ export default function SpectatePage() {
     socket.on("game:question", onQuestion);
     socket.on("game:reveal", onReveal);
     socket.on("letters:revealed", onLettersRevealed);
+    socket.on("matching:revealed", onMatchingRevealed);
     socket.on("game:finished", onFinished);
     socket.on("room:closed", onRoomClosed);
 
@@ -96,6 +110,7 @@ export default function SpectatePage() {
       socket.off("game:question", onQuestion);
       socket.off("game:reveal", onReveal);
       socket.off("letters:revealed", onLettersRevealed);
+      socket.off("matching:revealed", onMatchingRevealed);
       socket.off("game:finished", onFinished);
       socket.off("room:closed", onRoomClosed);
     };
@@ -214,7 +229,8 @@ export default function SpectatePage() {
                   </Typography>
                   {room.phase !== "lobby" &&
                     room.phase !== "finished" &&
-                    room.round !== "letters" && (
+                    room.round !== "letters" &&
+                    room.round !== "matching" && (
                       <Chip
                         label={`Question ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
@@ -224,6 +240,14 @@ export default function SpectatePage() {
                     room.phase !== "lobby" &&
                     room.phase !== "finished" && (
                       <Chip label="Letters Round" color="secondary" />
+                    )}
+                  {room.round === "matching" &&
+                    room.phase !== "lobby" &&
+                    room.phase !== "finished" && (
+                      <Chip
+                        label={`Matching · Board ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        color="secondary"
+                      />
                     )}
                 </Stack>
 
@@ -271,6 +295,7 @@ export default function SpectatePage() {
 
                 {(room.phase === "question" || room.phase === "reveal") &&
                   room.round !== "letters" &&
+                  room.round !== "matching" &&
                   question && (
                     <Stack flexGrow={1} justifyContent="center" spacing={3}>
                       {room.phaseDeadline !== null && (
@@ -385,6 +410,91 @@ export default function SpectatePage() {
                               />
                             ))}
                           </Stack>
+                        </Stack>
+                      )}
+                    </Stack>
+                  )}
+
+                {(room.phase === "question" || room.phase === "reveal") &&
+                  room.round === "matching" &&
+                  room.activeMatchingBoard && (
+                    <Stack flexGrow={1} justifyContent="center" spacing={3}>
+                      {room.phaseDeadline !== null && (
+                        <Box sx={{ maxWidth: 480, mx: "auto", width: "100%" }}>
+                          <CountdownBar deadline={room.phaseDeadline} totalSeconds={90} />
+                        </Box>
+                      )}
+
+                      <Grid container spacing={3} justifyContent="center">
+                        <Grid item xs={12} sm={6} md={4}>
+                          <Stack spacing={1}>
+                            {room.activeMatchingBoard.left.map((item) => (
+                              <Paper
+                                key={item.id}
+                                variant="outlined"
+                                sx={{ p: 1.5, textAlign: "center" }}
+                              >
+                                {item.text}
+                              </Paper>
+                            ))}
+                          </Stack>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={4}>
+                          <Stack spacing={1}>
+                            {room.activeMatchingBoard.right.map((item) => (
+                              <Paper
+                                key={item.id}
+                                variant="outlined"
+                                sx={{ p: 1.5, textAlign: "center" }}
+                              >
+                                {item.text}
+                              </Paper>
+                            ))}
+                          </Stack>
+                        </Grid>
+                      </Grid>
+
+                      {!matchingRevealed && (
+                        <Typography textAlign="center" color="text.secondary" variant="body2">
+                          {room.answeredCount} / {room.players.length} players have
+                          finished matching
+                        </Typography>
+                      )}
+
+                      {matchingRevealed && room.activeMatchingBoard && (
+                        <Stack spacing={2}>
+                          <Typography variant="h6" textAlign="center">
+                            Correct Pairs
+                          </Typography>
+                          <Stack spacing={0.5} alignItems="center">
+                            {matchingRevealed.correctPairs.map((pair) => {
+                              const leftText = room.activeMatchingBoard?.left.find(
+                                (i) => i.id === pair.leftId
+                              )?.text;
+                              const rightText = room.activeMatchingBoard?.right.find(
+                                (i) => i.id === pair.rightId
+                              )?.text;
+                              return (
+                                <Typography key={pair.leftId} color="success.main">
+                                  {leftText} ↔ {rightText}
+                                </Typography>
+                              );
+                            })}
+                          </Stack>
+
+                          <Typography variant="h6" textAlign="center" sx={{ mt: 2 }}>
+                            Player Results
+                          </Typography>
+                          <Grid container spacing={1.5} justifyContent="center">
+                            {matchingRevealed.results.map((result) => (
+                              <Grid item key={result.playerId}>
+                                <Chip
+                                  label={`${result.playerName}: ${result.correctCount}/${room.activeMatchingBoard?.left.length} (+${result.points})`}
+                                  color={result.correctCount > 0 ? "success" : "default"}
+                                />
+                              </Grid>
+                            ))}
+                          </Grid>
                         </Stack>
                       )}
                     </Stack>
