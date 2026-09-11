@@ -344,7 +344,7 @@ function shuffle<T>(items: T[]): T[] {
  */
 export const MATCHING_BANK: MatchingBoardBankItem[] = [
   {
-    id: "match-0",
+    id: "match-0-T",
     title: "TUTORIAL: Artists & Songs",
     pairs: [
       { left: { id: "m0-l1", text: "Queen" }, right: { id: "m0-r1", text: "Bohemian Rhapsody" } },
@@ -358,6 +358,23 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
       { left: { id: "m0-l9", text: "Survivor" }, right: { id: "m0-r9", text: "Eye of the Tiger" } },
       { left: { id: "m0-l10", text: "a-ha" }, right: { id: "m0-r10", text: "Take On Me" } },
     ],
+  },
+  {
+    id: "match-0",
+    title: "Gbg tram lines and their colors",
+    pairs: [
+      { left: { id: "m0-l1", text: "Line 1" }, right: { id: "m0-r1", text: "White" } },
+      { left: { id: "m0-l2", text: "Line 2" }, right: { id: "m0-r2", text: "Yellow" } },
+      { left: { id: "m0-l3", text: "Line 3" }, right: { id: "m0-r3", text: "Dark blue" } },
+      { left: { id: "m0-l4", text: "Line 4" }, right: { id: "m0-r4", text: "Dark green" } },
+      { left: { id: "m0-l5", text: "Line 5" }, right: { id: "m0-r5", text: "Red" } },
+      { left: { id: "m0-l6", text: "Line 6" }, right: { id: "m0-r6", text: "Orange" } },
+      { left: { id: "m0-l7", text: "Line 7" }, right: { id: "m0-r7", text: "Brown" } },
+      { left: { id: "m0-l8", text: "Line 8" }, right: { id: "m0-r8", text: "Purple" } },
+      { left: { id: "m0-l9", text: "Line 9" }, right: { id: "m0-r9", text: "Light blue" } },
+      { left: { id: "m0-l10", text: "Line 10" }, right: { id: "m0-r10", text: "Light green" } },
+    ],
+    keepLeftOrder: true
   },
   {
     id: "match-1",
@@ -556,7 +573,8 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
 /** Builds the public (shuffled, answer-free) board that gets sent to clients. */
 export function toPublicMatchingBoard(board: MatchingBoardBankItem): MatchingBoard {
   return {
-    left: shuffle(board.pairs.map((p) => p.left)),
+    title: board.title,
+    left: board.keepLeftOrder ? board.pairs.map((p) => p.left) : shuffle(board.pairs.map((p) => p.left)),
     right: shuffle(board.pairs.map((p) => p.right)),
   };
 }

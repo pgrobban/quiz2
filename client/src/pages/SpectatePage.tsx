@@ -32,6 +32,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import { resolvePairColor } from "../lib/pairColors";
 
 type ViewState = "form" | "joining" | "watching";
 
@@ -425,31 +426,79 @@ export default function SpectatePage() {
                         </Box>
                       )}
 
+                      <Typography variant="h4" textAlign="center">
+                        {room.activeMatchingBoard.title}
+                      </Typography>
+
                       <Grid container spacing={3} justifyContent="center">
                         <Grid item xs={12} sm={6} md={4}>
                           <Stack spacing={1}>
-                            {room.activeMatchingBoard.left.map((item) => (
-                              <Paper
-                                key={item.id}
-                                variant="outlined"
-                                sx={{ p: 1.5, textAlign: "center" }}
-                              >
-                                {item.text}
-                              </Paper>
-                            ))}
+                            {room.activeMatchingBoard.left.map((item) => {
+                              const pairIndex = matchingRevealed
+                                ? matchingRevealed.correctPairs.findIndex(
+                                    (p) => p.leftId === item.id
+                                  )
+                                : -1;
+                              const rightText =
+                                pairIndex !== -1
+                                  ? room.activeMatchingBoard?.right.find(
+                                      (r) => r.id === matchingRevealed?.correctPairs[pairIndex].rightId
+                                    )?.text
+                                  : undefined;
+                              const color =
+                                pairIndex !== -1 ? resolvePairColor(pairIndex, rightText) : null;
+                              return (
+                                <Paper
+                                  key={item.id}
+                                  variant="outlined"
+                                  sx={{
+                                    p: 1.5,
+                                    textAlign: "center",
+                                    borderColor: color ?? "rgba(244, 244, 246, 0.16)",
+                                    borderWidth: color ? 2 : 1,
+                                    bgcolor: color ? `${color}2e` : undefined,
+                                    color: color ?? undefined,
+                                    fontWeight: color ? 700 : 400,
+                                    transition: "all 0.2s",
+                                  }}
+                                >
+                                  {item.text}
+                                </Paper>
+                              );
+                            })}
                           </Stack>
                         </Grid>
                         <Grid item xs={12} sm={6} md={4}>
                           <Stack spacing={1}>
-                            {room.activeMatchingBoard.right.map((item) => (
-                              <Paper
-                                key={item.id}
-                                variant="outlined"
-                                sx={{ p: 1.5, textAlign: "center" }}
-                              >
-                                {item.text}
-                              </Paper>
-                            ))}
+                            {room.activeMatchingBoard.right.map((item) => {
+                              const pairIndex = matchingRevealed
+                                ? matchingRevealed.correctPairs.findIndex(
+                                    (p) => p.rightId === item.id
+                                  )
+                                : -1;
+                              const color =
+                                pairIndex !== -1
+                                  ? resolvePairColor(pairIndex, item.text)
+                                  : null;
+                              return (
+                                <Paper
+                                  key={item.id}
+                                  variant="outlined"
+                                  sx={{
+                                    p: 1.5,
+                                    textAlign: "center",
+                                    borderColor: color ?? "rgba(244, 244, 246, 0.16)",
+                                    borderWidth: color ? 2 : 1,
+                                    bgcolor: color ? `${color}2e` : undefined,
+                                    color: color ?? undefined,
+                                    fontWeight: color ? 700 : 400,
+                                    transition: "all 0.2s",
+                                  }}
+                                >
+                                  {item.text}
+                                </Paper>
+                              );
+                            })}
                           </Stack>
                         </Grid>
                       </Grid>
@@ -467,7 +516,7 @@ export default function SpectatePage() {
                             Correct Pairs
                           </Typography>
                           <Stack spacing={0.5} alignItems="center">
-                            {matchingRevealed.correctPairs.map((pair) => {
+                            {matchingRevealed.correctPairs.map((pair, index) => {
                               const leftText = room.activeMatchingBoard?.left.find(
                                 (i) => i.id === pair.leftId
                               )?.text;
@@ -475,7 +524,10 @@ export default function SpectatePage() {
                                 (i) => i.id === pair.rightId
                               )?.text;
                               return (
-                                <Typography key={pair.leftId} color="success.main">
+                                <Typography
+                                  key={pair.leftId}
+                                  sx={{ color: resolvePairColor(index, rightText), fontWeight: 700 }}
+                                >
                                   {leftText} ↔ {rightText}
                                 </Typography>
                               );

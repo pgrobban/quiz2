@@ -98,6 +98,7 @@ export interface MatchingItem {
 
 /** Two independently-shuffled columns of 10 items each, forming 10 true left/right pairs. */
 export interface MatchingBoard {
+  title: string;
   left: MatchingItem[];
   right: MatchingItem[];
 }
@@ -107,6 +108,7 @@ export interface MatchingBoardBankItem {
   id: string;
   title: string;
   pairs: { left: MatchingItem; right: MatchingItem }[];
+  keepLeftOrder?: boolean;
 }
 
 export interface MatchingBoardPayload {

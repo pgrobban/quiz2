@@ -276,7 +276,7 @@ export default function JoinPage() {
     setWordIndices((prev) => [...prev, index]);
   };
 
-    /** Taps a letter already in the word box to send it back to the pool. */
+  /** Taps a letter already in the word box to send it back to the pool. */
   const handleTapBoxLetter = (position: number) => {
     if (wordLocked || timeExpired) return;
     setWordIndices((prev) => prev.filter((_, i) => i !== position));
@@ -465,8 +465,8 @@ export default function JoinPage() {
                         isRevealedCorrect
                           ? "success"
                           : isRevealedWrongSelection
-                          ? "error"
-                          : "primary"
+                            ? "error"
+                            : "primary"
                       }
                       size="large"
                       disabled={selectedIndex !== null || timeExpired}
@@ -664,6 +664,10 @@ export default function JoinPage() {
                   />
                 </Box>
               )}
+
+              <Typography variant="h6" textAlign="center" sx={{ mb: 1 }}>
+                {activeMatchingBoard.title}
+              </Typography>
 
               <Typography color="text.secondary" textAlign="center" sx={{ mb: 2 }}>
                 {matchingSubmitted

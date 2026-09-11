@@ -673,6 +673,10 @@ export default function HostPage() {
                     />
                   </Stack>
 
+                  <Typography variant="h6" textAlign="center" sx={{ mb: 2 }}>
+                    {activeMatchingBoard.title}
+                  </Typography>
+
                   {room.phaseDeadline !== null && (
                     <Box sx={{ mb: 2 }}>
                       <CountdownBar deadline={room.phaseDeadline} totalSeconds={90} />
