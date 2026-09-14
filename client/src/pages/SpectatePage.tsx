@@ -24,6 +24,7 @@ import {
 } from "@mui/icons-material";
 import type {
   LetterSubmission,
+  MathSubmission,
   MatchingPlayerResult,
   Player,
   Question,
@@ -52,6 +53,11 @@ export default function SpectatePage() {
     correctPairs: { leftId: string; rightId: string }[];
     results: MatchingPlayerResult[];
   } | null>(null);
+  const [mathRevealed, setMathRevealed] = useState<{
+    target: number;
+    submissions: MathSubmission[];
+    closestSolution: { value: number; expression: string; distance: number } | null;
+  } | null>(null);
 
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
@@ -61,6 +67,7 @@ export default function SpectatePage() {
         setCorrectIndex(null);
         setLettersReveal(null);
         setMatchingRevealed(null);
+        setMathRevealed(null);
       }
     }
 
@@ -87,6 +94,14 @@ export default function SpectatePage() {
       setMatchingRevealed(payload);
     }
 
+    function onMathRevealed(payload: {
+      target: number;
+      submissions: MathSubmission[];
+      closestSolution: { value: number; expression: string; distance: number } | null;
+    }) {
+      setMathRevealed(payload);
+    }
+
     function onFinished() {
       setQuestion(null);
     }
@@ -103,6 +118,7 @@ export default function SpectatePage() {
     socket.on("game:reveal", onReveal);
     socket.on("letters:revealed", onLettersRevealed);
     socket.on("matching:revealed", onMatchingRevealed);
+    socket.on("math:revealed", onMathRevealed);
     socket.on("game:finished", onFinished);
     socket.on("room:closed", onRoomClosed);
 
@@ -112,6 +128,7 @@ export default function SpectatePage() {
       socket.off("game:reveal", onReveal);
       socket.off("letters:revealed", onLettersRevealed);
       socket.off("matching:revealed", onMatchingRevealed);
+      socket.off("math:revealed", onMathRevealed);
       socket.off("game:finished", onFinished);
       socket.off("room:closed", onRoomClosed);
     };
@@ -231,7 +248,8 @@ export default function SpectatePage() {
                   {room.phase !== "lobby" &&
                     room.phase !== "finished" &&
                     room.round !== "letters" &&
-                    room.round !== "matching" && (
+                    room.round !== "matching" &&
+                    room.round !== "math" && (
                       <Chip
                         label={`Question ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
@@ -249,6 +267,11 @@ export default function SpectatePage() {
                         label={`Matching · Board ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
                       />
+                    )}
+                  {room.round === "math" &&
+                    room.phase !== "lobby" &&
+                    room.phase !== "finished" && (
+                      <Chip label="Math Round" color="secondary" />
                     )}
                 </Stack>
 
@@ -297,6 +320,7 @@ export default function SpectatePage() {
                 {(room.phase === "question" || room.phase === "reveal") &&
                   room.round !== "letters" &&
                   room.round !== "matching" &&
+                  room.round !== "math" &&
                   question && (
                     <Stack flexGrow={1} justifyContent="center" spacing={3}>
                       {room.phaseDeadline !== null && (
@@ -543,6 +567,75 @@ export default function SpectatePage() {
                                 <Chip
                                   label={`${result.playerName}: ${result.correctCount}/${room.activeMatchingBoard?.left.length} (+${result.points})`}
                                   color={result.correctCount > 0 ? "success" : "default"}
+                                />
+                              </Grid>
+                            ))}
+                          </Grid>
+                        </Stack>
+                      )}
+                    </Stack>
+                  )}
+
+                {(room.phase === "question" || room.phase === "reveal") &&
+                  room.round === "math" &&
+                  room.activeMathChallenge && (
+                    <Stack flexGrow={1} justifyContent="center" spacing={3}>
+                      {room.phaseDeadline !== null && (
+                        <Box sx={{ maxWidth: 480, mx: "auto", width: "100%" }}>
+                          <CountdownBar deadline={room.phaseDeadline} totalSeconds={90} />
+                        </Box>
+                      )}
+
+                      <Typography variant="body1" color="text.secondary" textAlign="center">
+                        Target
+                      </Typography>
+                      <Typography
+                        variant="h2"
+                        textAlign="center"
+                        sx={{ fontFamily: "monospace" }}
+                      >
+                        {room.activeMathChallenge.target}
+                      </Typography>
+
+                      <Box sx={{ py: 1 }}>
+                        <LetterReveal
+                          letters={room.activeMathChallenge.numbers.map(String)}
+                          scrambleCharset={"0123456789".split("")}
+                          tileSize={56}
+                        />
+                      </Box>
+
+                      {!mathRevealed && (
+                        <Typography textAlign="center" color="text.secondary" variant="body2">
+                          {room.answeredCount} / {room.players.length} players have
+                          locked in an answer
+                        </Typography>
+                      )}
+
+                      {mathRevealed && (
+                        <Stack spacing={2}>
+                          {mathRevealed.closestSolution && (
+                            <Typography textAlign="center" color="success.main" variant="h6">
+                              Best possible: {mathRevealed.closestSolution.expression} ={" "}
+                              {mathRevealed.closestSolution.value}
+                              {mathRevealed.closestSolution.distance > 0
+                                ? ` (${mathRevealed.closestSolution.distance} away)`
+                                : " (exact!)"}
+                            </Typography>
+                          )}
+                          <Typography variant="h6" textAlign="center">
+                            Player Answers
+                          </Typography>
+                          <Grid container spacing={1.5} justifyContent="center">
+                            {mathRevealed.submissions.map((sub) => (
+                              <Grid item key={sub.playerId}>
+                                <Chip
+                                  label={
+                                    sub.value !== null
+                                      ? `${sub.playerName}: ${sub.expression} = ${sub.value} (+${sub.points})`
+                                      : `${sub.playerName}: ${sub.expression} (invalid)`
+                                  }
+                                  color={sub.points > 0 ? "success" : "default"}
                                 />
                               </Grid>
                             ))}

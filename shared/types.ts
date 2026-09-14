@@ -55,6 +55,8 @@ export interface RoomState {
   activeLetters: string[] | null;
   /** The active two-column board for the "matching" round, while active/revealed. Null otherwise. */
   activeMatchingBoard: MatchingBoard | null;
+  /** The active target + numbers for the "math" round, while active/revealed. Null otherwise. */
+  activeMathChallenge: MathChallenge | null;
   /**
    * Epoch ms when the current question/letters round's answer window closes.
    * Null when there's no active countdown (lobby, introduction, reveal, finished).
@@ -138,6 +140,32 @@ export interface MatchingRevealPayload {
   correctPairs: { leftId: string; rightId: string }[];
   results: MatchingPlayerResult[];
   players: Player[];
+}
+
+/** The target number + 6 numbers to combine for the "math" round. */
+export interface MathChallenge {
+  target: number;
+  numbers: number[];
+}
+
+/** One player's submitted expression for the math round, scored at reveal time. */
+export interface MathSubmission {
+  playerId: string;
+  playerName: string;
+  expression: string;
+  /** Null if the expression was invalid (bad syntax, wrong numbers used, non-integer result, etc). */
+  value: number | null;
+  /** |target - value|, or null if invalid. */
+  distance: number | null;
+  points: number;
+}
+
+export interface MathRevealPayload {
+  target: number;
+  submissions: MathSubmission[];
+  players: Player[];
+  /** The closest value the server could find to the target using the given numbers (null only if truly no combination is possible). */
+  closestSolution: { value: number; expression: string; distance: number } | null;
 }
 
 export interface ClientToServerEvents {
@@ -227,6 +255,16 @@ export interface ClientToServerEvents {
     callback: (response: { ok: true } | { ok: false; error: string }) => void
   ) => void;
 
+  /** Math round: submit (and lock in) an expression combining the given numbers. */
+  "player:submit-math": (
+    payload: { code: string; expression: string },
+    callback: (
+      response:
+        | { ok: true; valid: boolean; value?: number; distance?: number }
+        | { ok: false; error: string }
+    ) => void
+  ) => void;
+
   "player:leave-room": (payload: { code: string }) => void;
 }
 
@@ -242,6 +280,10 @@ export interface ServerToClientEvents {
   "matching:board": (payload: MatchingBoardPayload) => void;
   /** Matching round: the correct pair + everyone's guesses have been scored. */
   "matching:revealed": (payload: MatchingRevealPayload) => void;
+  /** Math round: the target + 6 numbers have been generated and the round is now active. */
+  "math:started": (payload: MathChallenge) => void;
+  /** Math round: submitted expressions have been scored. */
+  "math:revealed": (payload: MathRevealPayload) => void;
   /** The current round's questions have all been played (or the host ended it early). */
   "game:round-ended": (payload: { players: Player[] }) => void;
   "game:finished": (payload: { players: Player[] }) => void;

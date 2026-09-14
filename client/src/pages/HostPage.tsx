@@ -34,6 +34,8 @@ import {
 import type {
   GameRound,
   LetterSubmission,
+  MathChallenge,
+  MathSubmission,
   MatchingBoard,
   MatchingBoardBankItem,
   MatchingPlayerResult,
@@ -76,6 +78,14 @@ export default function HostPage() {
   const [matchingRevealed, setMatchingRevealed] = useState<{
     correctPairs: { leftId: string; rightId: string }[];
     results: MatchingPlayerResult[];
+  } | null>(null);
+
+  // Math round state.
+  const [activeMathChallenge, setActiveMathChallenge] = useState<MathChallenge | null>(null);
+  const [mathRevealed, setMathRevealed] = useState<{
+    target: number;
+    submissions: MathSubmission[];
+    closestSolution: { value: number; expression: string; distance: number } | null;
   } | null>(null);
 
   // Round/question selection (host-only, not part of shared room state).
@@ -140,6 +150,19 @@ export default function HostPage() {
       setMatchingRevealed(payload);
     }
 
+    function onMathStarted(payload: MathChallenge) {
+      setActiveMathChallenge(payload);
+      setMathRevealed(null);
+    }
+
+    function onMathRevealed(payload: {
+      target: number;
+      submissions: MathSubmission[];
+      closestSolution: { value: number; expression: string; distance: number } | null;
+    }) {
+      setMathRevealed(payload);
+    }
+
     function onRoundEnded() {
       setQuestion(null);
       setCorrectIndex(null);
@@ -147,6 +170,8 @@ export default function HostPage() {
       setLettersRevealed(null);
       setActiveMatchingBoard(null);
       setMatchingRevealed(null);
+      setActiveMathChallenge(null);
+      setMathRevealed(null);
       setAvailableQuestions(null);
       setSelectedQuestionIds([]);
       setAvailableMatchingBoards(null);
@@ -165,6 +190,8 @@ export default function HostPage() {
     socket.on("letters:revealed", onLettersRevealed);
     socket.on("matching:board", onMatchingBoard);
     socket.on("matching:revealed", onMatchingRevealed);
+    socket.on("math:started", onMathStarted);
+    socket.on("math:revealed", onMathRevealed);
     socket.on("game:round-ended", onRoundEnded);
     socket.on("connect_error", onConnectError);
 
@@ -177,6 +204,8 @@ export default function HostPage() {
       socket.off("letters:revealed", onLettersRevealed);
       socket.off("matching:board", onMatchingBoard);
       socket.off("matching:revealed", onMatchingRevealed);
+      socket.off("math:started", onMathStarted);
+      socket.off("math:revealed", onMathRevealed);
       socket.off("game:round-ended", onRoundEnded);
       socket.off("connect_error", onConnectError);
       socket.disconnect();
@@ -746,6 +775,92 @@ export default function HostPage() {
                           </ListItem>
                         ))}
                       </List>
+                    </>
+                  )}
+                </Paper>
+              )}
+
+            {(room.phase === "question" || room.phase === "reveal") &&
+              room.round === "math" &&
+              activeMathChallenge && (
+                <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 2 }}
+                  >
+                    <Typography variant="overline" color="text.secondary">
+                      Math Round
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={`${room.answeredCount} / ${room.players.length} locked in`}
+                    />
+                  </Stack>
+
+                  {room.phaseDeadline !== null && (
+                    <Box sx={{ mb: 2 }}>
+                      <CountdownBar deadline={room.phaseDeadline} totalSeconds={90} />
+                    </Box>
+                  )}
+
+                  <Typography variant="body2" color="text.secondary" textAlign="center">
+                    Target
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    textAlign="center"
+                    sx={{ fontFamily: "monospace", mb: 2 }}
+                  >
+                    {activeMathChallenge.target}
+                  </Typography>
+
+                  <Box sx={{ py: 1 }}>
+                    <LetterReveal
+                      letters={activeMathChallenge.numbers.map(String)}
+                      scrambleCharset={"0123456789".split("")}
+                      tileSize={56}
+                    />
+                  </Box>
+
+                  {mathRevealed && (
+                    <>
+                      {mathRevealed.closestSolution && (
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                          Best possible: {mathRevealed.closestSolution.expression} ={" "}
+                          {mathRevealed.closestSolution.value}
+                          {mathRevealed.closestSolution.distance > 0
+                            ? ` (${mathRevealed.closestSolution.distance} away from target)`
+                            : " (exact!)"}
+                        </Alert>
+                      )}
+
+                      <Typography variant="subtitle1" sx={{ mt: 3, mb: 1 }}>
+                        Player Answers
+                      </Typography>
+                      {mathRevealed.submissions.length === 0 ? (
+                        <Typography color="text.secondary">
+                          No one submitted an answer.
+                        </Typography>
+                      ) : (
+                        <List dense>
+                          {mathRevealed.submissions.map((sub) => (
+                            <ListItem key={sub.playerId}>
+                              <ListItemText
+                                primary={`${sub.playerName}: ${sub.expression} ${
+                                  sub.value !== null ? `= ${sub.value}` : ""
+                                }`}
+                                secondary={
+                                  sub.value !== null
+                                    ? `${sub.distance} away from target - +${sub.points} pts`
+                                    : "Invalid expression - +0 pts"
+                                }
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      )}
                     </>
                   )}
                 </Paper>

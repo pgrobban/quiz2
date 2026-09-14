@@ -8,7 +8,7 @@ import type {
   ServerToClientEvents,
   SocketData,
 } from "../../shared/types";
-import { LETTERS_REVEAL_ANIMATION_MS, RoomManager } from "./roomManager";
+import { LETTERS_REVEAL_ANIMATION_MS, MATH_REVEAL_ANIMATION_MS, RoomManager } from "./roomManager";
 
 const PORT = Number(process.env.PORT) || 4000;
 
@@ -192,6 +192,21 @@ io.on("connection", (socket) => {
       return;
     }
 
+    if (room.round === "math") {
+      const result = rooms.startMathRound(code);
+      if (!result.ok) return;
+      io.to(code).emit("room:update", result.room);
+      io.to(code).emit("math:started", result.challenge);
+
+      // Same idea as the letters round: don't start the countdown until
+      // the reveal animation has actually finished on clients.
+      setTimeout(() => {
+        const updatedRoom = rooms.activateMathTimer(code);
+        if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
+      }, MATH_REVEAL_ANIMATION_MS);
+      return;
+    }
+
     const result = rooms.startFirstQuestion(code);
     if (!result.ok) return;
 
@@ -236,6 +251,19 @@ io.on("connection", (socket) => {
         correctPairs: result.correctPairs,
         results: result.results,
         players: result.room.players,
+      });
+      return;
+    }
+
+    if (room.round === "math") {
+      const result = rooms.revealMath(code);
+      if (!result) return;
+      io.to(code).emit("room:update", result.room);
+      io.to(code).emit("math:revealed", {
+        target: result.target,
+        submissions: result.submissions,
+        players: result.room.players,
+        closestSolution: result.closestSolution,
       });
       return;
     }
@@ -320,6 +348,16 @@ io.on("connection", (socket) => {
 
   socket.on("player:submit-matching-board", ({ code, pairs }, callback) => {
     const result = rooms.submitMatchingBoard(code, socket.id, pairs);
+    callback(result);
+
+    if (result.ok) {
+      const room = rooms.getRoom(code);
+      if (room) io.to(code).emit("room:update", room);
+    }
+  });
+
+  socket.on("player:submit-math", ({ code, expression }, callback) => {
+    const result = rooms.submitMath(code, socket.id, expression);
     callback(result);
 
     if (result.ok) {

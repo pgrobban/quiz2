@@ -20,6 +20,8 @@ import {
 } from "@mui/icons-material";
 import type {
   LetterSubmission,
+  MathChallenge,
+  MathSubmission,
   MatchingBoard,
   MatchingPlayerResult,
   Player,
@@ -38,6 +40,7 @@ type ViewState =
   | "question"
   | "letters"
   | "matching"
+  | "math"
   | "finished";
 
 export default function JoinPage() {
@@ -77,6 +80,20 @@ export default function JoinPage() {
     results: MatchingPlayerResult[];
   } | null>(null);
 
+  // Math round state. Numbers are tapped from the reveal tiles (each usable
+  // only once, like the letters round); operators/parens are free to reuse.
+  const [activeMathChallenge, setActiveMathChallenge] = useState<MathChallenge | null>(null);
+  const [mathAnimationDone, setMathAnimationDone] = useState(false);
+  const [mathTokens, setMathTokens] = useState<
+    ({ type: "number"; numberIndex: number; value: number } | { type: "op"; symbol: string })[]
+  >([]);
+  const [mathLocked, setMathLocked] = useState(false);
+  const [mathRevealed, setMathRevealed] = useState<{
+    target: number;
+    submissions: MathSubmission[];
+    closestSolution: { value: number; expression: string; distance: number } | null;
+  } | null>(null);
+
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
       setRoom(updatedRoom);
@@ -97,6 +114,11 @@ export default function JoinPage() {
         setPairs([]);
         setMatchingSubmitted(false);
         setMatchingRevealed(null);
+        setActiveMathChallenge(null);
+        setMathAnimationDone(false);
+        setMathTokens([]);
+        setMathLocked(false);
+        setMathRevealed(null);
         setViewState("lobby");
       } else if (updatedRoom.phase === "introduction") {
         setViewState("introduction");
@@ -151,6 +173,24 @@ export default function JoinPage() {
       setMatchingRevealed(payload);
     }
 
+    function onMathStarted(payload: MathChallenge) {
+      setActiveMathChallenge(payload);
+      setMathAnimationDone(false);
+      setMathTokens([]);
+      setMathLocked(false);
+      setMathRevealed(null);
+      setTimeExpired(false);
+      setViewState("math");
+    }
+
+    function onMathRevealed(payload: {
+      target: number;
+      submissions: MathSubmission[];
+      closestSolution: { value: number; expression: string; distance: number } | null;
+    }) {
+      setMathRevealed(payload);
+    }
+
     function onFinished(payload: { players: Player[] }) {
       setFinalPlayers(payload.players);
       setViewState("finished");
@@ -170,6 +210,8 @@ export default function JoinPage() {
     socket.on("letters:revealed", onLettersRevealed);
     socket.on("matching:board", onMatchingBoard);
     socket.on("matching:revealed", onMatchingRevealed);
+    socket.on("math:started", onMathStarted);
+    socket.on("math:revealed", onMathRevealed);
     socket.on("game:finished", onFinished);
     socket.on("room:closed", onRoomClosed);
 
@@ -181,6 +223,8 @@ export default function JoinPage() {
       socket.off("letters:revealed", onLettersRevealed);
       socket.off("matching:board", onMatchingBoard);
       socket.off("matching:revealed", onMatchingRevealed);
+      socket.off("math:started", onMathStarted);
+      socket.off("math:revealed", onMathRevealed);
       socket.off("game:finished", onFinished);
       socket.off("room:closed", onRoomClosed);
     };
@@ -336,6 +380,54 @@ export default function JoinPage() {
     setStagedSide(null);
     setStagedId(null);
     setPairs((prev) => [...prev, { leftId, rightId }]);
+  };
+
+  const usedMathNumberIndices = mathTokens
+    .filter((t): t is { type: "number"; numberIndex: number; value: number } => t.type === "number")
+    .map((t) => t.numberIndex);
+
+  const mathExpressionText = mathTokens
+    .map((t) => (t.type === "number" ? String(t.value) : t.symbol))
+    .join(" ");
+
+  /** Taps a settled number tile (each usable only once, like the letters round). */
+  const handleTapMathNumber = (numberIndex: number) => {
+    if (mathLocked || timeExpired || !activeMathChallenge) return;
+    if (usedMathNumberIndices.includes(numberIndex)) return;
+    setMathTokens((prev) => [
+      ...prev,
+      { type: "number", numberIndex, value: activeMathChallenge.numbers[numberIndex] },
+    ]);
+  };
+
+  const handleAppendOperator = (symbol: string) => {
+    if (mathLocked || timeExpired) return;
+    setMathTokens((prev) => [...prev, { type: "op", symbol }]);
+  };
+
+  const handleBackspaceExpression = () => {
+    if (mathLocked || timeExpired) return;
+    setMathTokens((prev) => prev.slice(0, -1));
+  };
+
+  const handleClearExpression = () => {
+    if (mathLocked || timeExpired) return;
+    setMathTokens([]);
+  };
+
+  const handleLockInMath = () => {
+    if (!room || mathLocked || timeExpired || mathTokens.length === 0) return;
+    setMathLocked(true);
+    socket.emit(
+      "player:submit-math",
+      { code: room.code, expression: mathExpressionText },
+      (response) => {
+        if (!response.ok) {
+          setErrorMessage(response.error);
+          setMathLocked(false);
+        }
+      }
+    );
   };
 
   const myScore = room?.players.find((p) => p.id === socket.id)?.score ?? 0;
@@ -754,6 +846,177 @@ export default function JoinPage() {
                       </Alert>
                     );
                   })()}
+                </Stack>
+              )}
+            </Paper>
+          </>
+        )}
+
+        {viewState === "math" && room && activeMathChallenge && (
+          <>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="overline" color="text.secondary">
+                Math Round
+              </Typography>
+              <Chip label={`${myScore} pts`} color="primary" size="small" />
+            </Stack>
+
+            <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+              {room.phaseDeadline !== null && (
+                <Box sx={{ mb: 2 }}>
+                  <CountdownBar
+                    deadline={room.phaseDeadline}
+                    totalSeconds={90}
+                    onExpire={() => setTimeExpired(true)}
+                  />
+                </Box>
+              )}
+
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                Target
+              </Typography>
+              <Typography
+                variant="h3"
+                textAlign="center"
+                sx={{ fontFamily: "monospace", mb: 2 }}
+              >
+                {activeMathChallenge.target}
+              </Typography>
+
+              <Box sx={{ py: 1 }}>
+                <LetterReveal
+                  letters={activeMathChallenge.numbers.map(String)}
+                  scrambleCharset={"0123456789".split("")}
+                  tileSize={48}
+                  onComplete={() => setMathAnimationDone(true)}
+                  onTileClick={
+                    !mathLocked && !timeExpired ? handleTapMathNumber : undefined
+                  }
+                  usedIndices={usedMathNumberIndices}
+                />
+              </Box>
+
+              {!mathRevealed && (
+                <Stack spacing={2} sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Your expression (tap a number above to use it)
+                  </Typography>
+                  <Box
+                    sx={{
+                      minHeight: 56,
+                      p: 1.5,
+                      borderRadius: 2,
+                      border: "1px dashed rgba(244, 244, 246, 0.28)",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    {mathExpressionText ? (
+                      <Typography sx={{ fontFamily: "monospace", fontSize: "1.1rem" }}>
+                        {mathExpressionText}
+                      </Typography>
+                    ) : (
+                      <Typography color="text.secondary">
+                        {mathAnimationDone
+                          ? "Tap numbers above and operators below..."
+                          : "Wait for all numbers to appear..."}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {mathAnimationDone &&
+                      ["+", "-", "*", "/", "(", ")"].map((op) => (
+                        <Button
+                          key={op}
+                          variant="outlined"
+                          color="secondary"
+                          disabled={mathLocked || timeExpired}
+                          onClick={() => handleAppendOperator(op)}
+                          sx={{ width: 56, flex: "0 0 auto", fontFamily: "monospace" }}
+                        >
+                          {op}
+                        </Button>
+                      ))}
+                    {mathAnimationDone && (
+                      <>
+                        <Button
+                          variant="outlined"
+                          color="warning"
+                          disabled={mathLocked || timeExpired}
+                          onClick={handleBackspaceExpression}
+                        >
+                          ⌫
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="warning"
+                          disabled={mathLocked || timeExpired}
+                          onClick={handleClearExpression}
+                        >
+                          Clear
+                        </Button>
+                      </>
+                    )}
+                  </Stack>
+
+                  <Button
+                    variant="contained"
+                    size="large"
+                    color="success"
+                    disabled={!mathAnimationDone || mathLocked || timeExpired || mathTokens.length === 0}
+                    onClick={handleLockInMath}
+                  >
+                    Lock In Answer
+                  </Button>
+
+                  {mathLocked && (
+                    <Typography color="text.secondary" textAlign="center">
+                      Locked in "{mathExpressionText}" - waiting for the host to reveal...
+                    </Typography>
+                  )}
+                  {timeExpired && !mathLocked && (
+                    <Alert severity="warning">Time's up! You didn't submit an answer.</Alert>
+                  )}
+                </Stack>
+              )}
+
+              {mathRevealed && (
+                <Stack spacing={1} sx={{ mt: 3 }}>
+                  {(() => {
+                    const mine = mathRevealed.submissions.find(
+                      (s) => s.playerId === socket.id
+                    );
+                    if (!mine) {
+                      return (
+                        <Alert severity="warning">
+                          You didn't submit an answer this round.
+                        </Alert>
+                      );
+                    }
+                    if (mine.value === null) {
+                      return (
+                        <Alert severity="error">
+                          "{mine.expression}" was an invalid expression - +0 points
+                        </Alert>
+                      );
+                    }
+                    return (
+                      <Alert severity={mine.points > 0 ? "success" : "info"}>
+                        "{mine.expression}" = {mine.value} ({mine.distance} away from{" "}
+                        {mathRevealed.target}) - +{mine.points} points
+                      </Alert>
+                    );
+                  })()}
+                  {mathRevealed.closestSolution && (
+                    <Alert severity="info">
+                      Best possible: {mathRevealed.closestSolution.expression} ={" "}
+                      {mathRevealed.closestSolution.value}
+                      {mathRevealed.closestSolution.distance > 0
+                        ? ` (${mathRevealed.closestSolution.distance} away)`
+                        : " (exact!)"}
+                    </Alert>
+                  )}
                 </Stack>
               )}
             </Paper>

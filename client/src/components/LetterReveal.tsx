@@ -13,13 +13,20 @@ interface LetterRevealProps {
   onTileClick?: (index: number) => void;
   /** Indices already used/picked - shown dimmed and non-interactive. */
   usedIndices?: number[];
+  /**
+   * Characters to cycle through while scrambling before a tile settles.
+   * Defaults to A-Z; pass digits (e.g. "0123456789".split("")) for a
+   * numbers-round reveal instead of a letters-round one.
+   */
+  scrambleCharset?: string[];
 }
 
 /**
- * Shows the given letters one at a time, each cycling through random
- * letters for ~3 seconds before "settling" on its real value, then moving
- * on to the next position - like a slot machine / Countdown-style reveal.
- * Once a tile has settled, it can optionally become tappable via onTileClick.
+ * Shows the given letters (or numbers) one at a time, each cycling through
+ * random characters for ~3 seconds before "settling" on its real value,
+ * then moving on to the next position - like a slot machine / Countdown-
+ * style reveal. Once a tile has settled, it can optionally become tappable
+ * via onTileClick.
  */
 export default function LetterReveal({
   letters,
@@ -27,14 +34,22 @@ export default function LetterReveal({
   tileSize = 52,
   onTileClick,
   usedIndices = [],
+  scrambleCharset = ALPHABET,
 }: LetterRevealProps) {
   const [settledCount, setSettledCount] = useState(0);
   const [scrambleChar, setScrambleChar] = useState("");
 
+  // Use a content-based key rather than the array reference itself - callers
+  // often derive `letters` inline (e.g. `numbers.map(String)`), which creates
+  // a brand new array on every render even when the actual values haven't
+  // changed. Depending on the array reference would restart the reveal
+  // animation from scratch on every unrelated re-render.
+  const lettersKey = letters.join("\u0000");
+
   // Reset whenever a new letter set comes in (e.g. a fresh letters round).
   useEffect(() => {
     setSettledCount(0);
-  }, [letters]);
+  }, [lettersKey]);
 
   useEffect(() => {
     if (settledCount >= letters.length) {
@@ -43,7 +58,7 @@ export default function LetterReveal({
     }
 
     const scrambleTimer = setInterval(() => {
-      setScrambleChar(ALPHABET[Math.floor(Math.random() * ALPHABET.length)]);
+      setScrambleChar(scrambleCharset[Math.floor(Math.random() * scrambleCharset.length)]);
     }, SCRAMBLE_INTERVAL_MS);
 
     const settleTimer = setTimeout(() => {
@@ -57,7 +72,7 @@ export default function LetterReveal({
     };
     // Re-run only when we advance to the next tile or get a new letter set.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settledCount, letters]);
+  }, [settledCount, lettersKey]);
 
   return (
     <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent="center" useFlexGap>
@@ -73,7 +88,9 @@ export default function LetterReveal({
             elevation={isSettled ? 4 : 0}
             variant={isSettled ? "elevation" : "outlined"}
             sx={{
-              width: tileSize,
+              minWidth: tileSize,
+              width: "auto",
+              px: 1,
               height: tileSize * 1.15,
               display: "flex",
               alignItems: "center",

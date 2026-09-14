@@ -2,6 +2,8 @@ import { randomInt } from "node:crypto";
 import type {
   GameRound,
   LetterSubmission,
+  MathChallenge,
+  MathSubmission,
   MatchingBoard,
   MatchingBoardBankItem,
   MatchingGuess,
@@ -20,6 +22,12 @@ import {
   toPublicQuestion,
 } from "./questions";
 import { canFormWord, findTopWords, generateLetters, isDictionaryWord } from "./letters";
+import {
+  evaluateMathExpression,
+  findClosestSolution,
+  generateMathChallenge,
+  MathSolution,
+} from "./math";
 
 interface InternalRoom {
   public: RoomState;
@@ -33,6 +41,8 @@ interface InternalRoom {
   letterSubmissions: Map<string, string>;
   /** playerId -> the pairs they've locked in so far for the current matching board. */
   matchingGuesses: Map<string, MatchingGuess[]>;
+  /** playerId -> their locked-in expression + evaluated result for the current math round. */
+  mathSubmissions: Map<string, { expression: string; value: number | null; distance: number | null }>;
 }
 
 export interface AdvanceResult {
@@ -59,6 +69,13 @@ export interface MatchingRevealResult {
   results: MatchingPlayerResult[];
 }
 
+export interface MathRevealResult {
+  room: RoomState;
+  target: number;
+  submissions: MathSubmission[];
+  closestSolution: MathSolution | null;
+}
+
 export type SubmitAnswerResult =
   | { ok: true; correct: boolean }
   | { ok: false; error: string };
@@ -66,6 +83,10 @@ export type SubmitAnswerResult =
 export type SubmitWordResult = { ok: true } | { ok: false; error: string };
 
 export type SubmitMatchingBoardResult = { ok: true } | { ok: false; error: string };
+
+export type SubmitMathResult =
+  | { ok: true; valid: boolean; value?: number; distance?: number }
+  | { ok: false; error: string };
 
 const POINTS_PER_CORRECT_ANSWER = 100;
 /** Points awarded per letter of a valid word in the letters round (an 8-letter word = 80pts). */
@@ -79,14 +100,26 @@ const QUESTION_TIME_LIMIT_MS = 15_000;
 const LETTERS_TIME_LIMIT_MS = 60_000;
 /** How long players have to match as many pairs as they can in the matching round. */
 const MATCHING_TIME_LIMIT_MS = 90_000;
+/** How long players have to combine the numbers in the math round. */
+const MATH_TIME_LIMIT_MS = 90_000;
 /**
  * How long the client-side letter reveal animation takes (12 letters x 3s
  * each - see client/src/components/LetterReveal.tsx). The answer timer
  * shouldn't start ticking until all 12 letters have actually appeared.
  */
 const LETTERS_REVEAL_ANIMATION_MS = 12 * 3000;
+/** Same idea, but for the math round's 6-number reveal animation. */
+const MATH_REVEAL_ANIMATION_MS = 6 * 3000;
 
-export { LETTERS_REVEAL_ANIMATION_MS };
+export { LETTERS_REVEAL_ANIMATION_MS, MATH_REVEAL_ANIMATION_MS };
+
+/** Scores a math submission by how close it got to the target (closer = more points). */
+function pointsForDistance(distance: number): number {
+  if (distance === 0) return 100;
+  if (distance <= 5) return 75;
+  if (distance <= 10) return 50;
+  return 0;
+}
 
 /**
  * In-memory store of active rooms. Since this is a simple quiz-night app,
@@ -119,6 +152,7 @@ export class RoomManager {
         answeredCount: 0,
         activeLetters: null,
         activeMatchingBoard: null,
+        activeMathChallenge: null,
         phaseDeadline: null,
       },
       selectedQuestions: [],
@@ -126,6 +160,7 @@ export class RoomManager {
       pendingAnswers: new Map(),
       letterSubmissions: new Map(),
       matchingGuesses: new Map(),
+      mathSubmissions: new Map(),
     };
     this.rooms.set(code, room);
     return room.public;
@@ -168,6 +203,7 @@ export class RoomManager {
     internal.pendingAnswers.delete(playerId);
     internal.letterSubmissions.delete(playerId);
     internal.matchingGuesses.delete(playerId);
+    internal.mathSubmissions.delete(playerId);
     return internal.public;
   }
 
@@ -203,15 +239,17 @@ export class RoomManager {
     internal.public.totalQuestions = 0;
     internal.public.activeLetters = null;
     internal.public.activeMatchingBoard = null;
+    internal.public.activeMathChallenge = null;
     internal.selectedQuestions = [];
     internal.selectedMatchingBoards = [];
     internal.pendingAnswers.clear();
     internal.letterSubmissions.clear();
     internal.matchingGuesses.clear();
+    internal.mathSubmissions.clear();
 
-    if (round === "letters") {
-      // The letters round is procedurally generated - there's no bank of
-      // questions for the host to pick from, so it's immediately "ready".
+    if (round === "letters" || round === "math") {
+      // These rounds are procedurally generated - there's no bank of
+      // questions for the host to pick from, so they're immediately "ready".
       internal.public.totalQuestions = 1;
       return { ok: true, room: internal.public, availableQuestions: [], availableMatchingBoards: [] };
     }
@@ -430,6 +468,127 @@ export class RoomManager {
     };
   }
 
+  /** Math round: generates the target + 6 numbers and moves from the tutorial screen into play. */
+  startMathRound(
+    code: string
+  ): { ok: true; room: RoomState; challenge: MathChallenge } | { ok: false; error: string } {
+    const internal = this.rooms.get(code);
+    if (!internal) return { ok: false, error: "Room not found." };
+    if (internal.public.phase !== "introduction") {
+      return { ok: false, error: "Show the tutorial before starting the round." };
+    }
+
+    const challenge = generateMathChallenge();
+    internal.public.phase = "question";
+    internal.public.currentQuestionIndex = 0;
+    internal.public.answeredCount = 0;
+    internal.public.activeMathChallenge = challenge;
+    // The countdown starts once the reveal animation finishes, not now -
+    // see activateMathTimer(), scheduled by the caller.
+    internal.public.phaseDeadline = null;
+    internal.mathSubmissions.clear();
+
+    return { ok: true, room: internal.public, challenge };
+  }
+
+  /**
+   * Starts the actual answer countdown for the math round, once the reveal
+   * animation has had time to finish on clients. No-ops if the round has
+   * since moved on (host ended it early, etc).
+   */
+  activateMathTimer(code: string): RoomState | undefined {
+    const internal = this.rooms.get(code);
+    if (!internal) return undefined;
+    if (internal.public.phase !== "question" || internal.public.round !== "math") {
+      return undefined;
+    }
+
+    internal.public.phaseDeadline = Date.now() + MATH_TIME_LIMIT_MS;
+    return internal.public;
+  }
+
+  /** Math round: locks in a player's expression (one submission per player per round). */
+  submitMath(code: string, playerId: string, expression: string): SubmitMathResult {
+    const internal = this.rooms.get(code);
+    if (!internal) return { ok: false, error: "Room not found." };
+    if (internal.public.phase !== "question" || internal.public.round !== "math") {
+      return { ok: false, error: "Not accepting answers right now." };
+    }
+    if (
+      internal.public.phaseDeadline !== null &&
+      Date.now() > internal.public.phaseDeadline
+    ) {
+      return { ok: false, error: "Time's up!" };
+    }
+    if (internal.mathSubmissions.has(playerId)) {
+      return { ok: false, error: "You already locked in an answer." };
+    }
+
+    const challenge = internal.public.activeMathChallenge;
+    if (!challenge) return { ok: false, error: "No active challenge." };
+
+    const result = evaluateMathExpression(expression, challenge.numbers);
+    if (!result.ok) {
+      // Still "locks in" an invalid attempt - matches the letters round's
+      // behavior of one submission per player, scored (here: 0) at reveal.
+      internal.mathSubmissions.set(playerId, {
+        expression: expression.trim(),
+        value: null,
+        distance: null,
+      });
+      internal.public.answeredCount = internal.mathSubmissions.size;
+      return { ok: true, valid: false };
+    }
+
+    const distance = Math.abs(challenge.target - result.value);
+    internal.mathSubmissions.set(playerId, {
+      expression: expression.trim(),
+      value: result.value,
+      distance,
+    });
+    internal.public.answeredCount = internal.mathSubmissions.size;
+
+    return { ok: true, valid: true, value: result.value, distance };
+  }
+
+  /** Math round: scores every locked-in expression by how close it got to the target. */
+  revealMath(code: string): MathRevealResult | undefined {
+    const internal = this.rooms.get(code);
+    if (!internal || !internal.public.activeMathChallenge) return undefined;
+
+    const submissions: MathSubmission[] = [];
+    for (const player of internal.public.players) {
+      const submission = internal.mathSubmissions.get(player.id);
+      if (!submission) continue;
+
+      const points = submission.distance !== null ? pointsForDistance(submission.distance) : 0;
+      if (points > 0) player.score += points;
+
+      submissions.push({
+        playerId: player.id,
+        playerName: player.name,
+        expression: submission.expression,
+        value: submission.value,
+        distance: submission.distance,
+        points,
+      });
+    }
+
+    internal.public.phase = "reveal";
+    internal.public.phaseDeadline = null;
+    internal.mathSubmissions.clear();
+
+    const challenge = internal.public.activeMathChallenge;
+    const closestSolution = findClosestSolution(challenge.numbers, challenge.target);
+
+    return {
+      room: internal.public,
+      target: challenge.target,
+      submissions,
+      closestSolution,
+    };
+  }
+
   advanceToNextQuestion(code: string): AdvanceResult | undefined {
     const internal = this.rooms.get(code);
     if (!internal) return undefined;
@@ -484,12 +643,14 @@ export class RoomManager {
     internal.public.answeredCount = 0;
     internal.public.activeLetters = null;
     internal.public.activeMatchingBoard = null;
+    internal.public.activeMathChallenge = null;
     internal.public.phaseDeadline = null;
     internal.selectedQuestions = [];
     internal.selectedMatchingBoards = [];
     internal.pendingAnswers.clear();
     internal.letterSubmissions.clear();
     internal.matchingGuesses.clear();
+    internal.mathSubmissions.clear();
   }
 
   /** Ends the whole game (all rounds) and freezes the final scoreboard. */
