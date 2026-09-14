@@ -3,3 +3,5 @@ dist/
 .env
 *.log
 *_log.txt
+*_test.txt
+*.tsbuildinfo

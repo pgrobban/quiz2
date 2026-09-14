@@ -255,12 +255,12 @@ export interface ClientToServerEvents {
     callback: (response: { ok: true } | { ok: false; error: string }) => void
   ) => void;
 
-  /** Math round: submit (and lock in) an expression combining the given numbers. */
+  /** Math round: submit (and lock in) an expression combining the given numbers. Invalid expressions are rejected, not locked in. */
   "player:submit-math": (
     payload: { code: string; expression: string },
     callback: (
       response:
-        | { ok: true; valid: boolean; value?: number; distance?: number }
+        | { ok: true; value: number; distance: number }
         | { ok: false; error: string }
     ) => void
   ) => void;

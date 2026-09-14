@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -33,6 +33,10 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import {
+  MATH_SCRAMBLE_PER_TILE,
+  generateTargetScrambleCandidates,
+} from "../lib/mathScramble";
 import { resolvePairColor } from "../lib/pairColors";
 
 type ViewState = "form" | "joining" | "watching";
@@ -58,6 +62,11 @@ export default function SpectatePage() {
     submissions: MathSubmission[];
     closestSolution: { value: number; expression: string; distance: number } | null;
   } | null>(null);
+  const [targetRevealed, setTargetRevealed] = useState(false);
+  const targetScrambleCandidates = useMemo(
+    () => generateTargetScrambleCandidates(),
+    [room?.activeMathChallenge?.target]
+  );
 
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
@@ -68,6 +77,7 @@ export default function SpectatePage() {
         setLettersReveal(null);
         setMatchingRevealed(null);
         setMathRevealed(null);
+        setTargetRevealed(false);
       }
     }
 
@@ -133,6 +143,13 @@ export default function SpectatePage() {
       socket.off("room:closed", onRoomClosed);
     };
   }, []);
+
+  // No dedicated "math round started" event here (Spectate just reflects
+  // room state) - reset the target's reveal gate whenever the actual
+  // challenge content changes, not on every unrelated room:update.
+  useEffect(() => {
+    setTargetRevealed(false);
+  }, [room?.activeMathChallenge?.target, room?.activeMathChallenge?.numbers.join(",")]);
 
   const handleWatch = () => {
     const trimmedCode = code.trim();
@@ -258,7 +275,10 @@ export default function SpectatePage() {
                   {room.round === "letters" &&
                     room.phase !== "lobby" &&
                     room.phase !== "finished" && (
-                      <Chip label="Letters Round" color="secondary" />
+                      <Chip
+                        label={`Letters · Round ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        color="secondary"
+                      />
                     )}
                   {room.round === "matching" &&
                     room.phase !== "lobby" &&
@@ -271,7 +291,10 @@ export default function SpectatePage() {
                   {room.round === "math" &&
                     room.phase !== "lobby" &&
                     room.phase !== "finished" && (
-                      <Chip label="Math Round" color="secondary" />
+                      <Chip
+                        label={`Math · Round ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        color="secondary"
+                      />
                     )}
                 </Stack>
 
@@ -589,21 +612,25 @@ export default function SpectatePage() {
                       <Typography variant="body1" color="text.secondary" textAlign="center">
                         Target
                       </Typography>
-                      <Typography
-                        variant="h2"
-                        textAlign="center"
-                        sx={{ fontFamily: "monospace" }}
-                      >
-                        {room.activeMathChallenge.target}
-                      </Typography>
-
-                      <Box sx={{ py: 1 }}>
+                      <Box sx={{ py: 1, display: "flex", justifyContent: "center" }}>
                         <LetterReveal
-                          letters={room.activeMathChallenge.numbers.map(String)}
-                          scrambleCharset={"0123456789".split("")}
-                          tileSize={56}
+                          letters={[String(room.activeMathChallenge.target)]}
+                          scrambleCandidatesPerTile={[targetScrambleCandidates]}
+                          tileSize={80}
+                          onComplete={() => setTargetRevealed(true)}
                         />
                       </Box>
+
+                      {targetRevealed && (
+                        <Box sx={{ py: 1 }}>
+                          <LetterReveal
+                            letters={room.activeMathChallenge.numbers.map(String)}
+                            scrambleCharset={"0123456789".split("")}
+                            scrambleCandidatesPerTile={MATH_SCRAMBLE_PER_TILE}
+                            tileSize={56}
+                          />
+                        </Box>
+                      )}
 
                       {!mathRevealed && (
                         <Typography textAlign="center" color="text.secondary" variant="body2">

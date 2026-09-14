@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -46,6 +46,10 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import {
+  MATH_SCRAMBLE_PER_TILE,
+  generateTargetScrambleCandidates,
+} from "../lib/mathScramble";
 
 type ConnectionState = "connecting" | "ready" | "error";
 
@@ -82,6 +86,11 @@ export default function HostPage() {
 
   // Math round state.
   const [activeMathChallenge, setActiveMathChallenge] = useState<MathChallenge | null>(null);
+  const [targetRevealed, setTargetRevealed] = useState(false);
+  const targetScrambleCandidates = useMemo(
+    () => generateTargetScrambleCandidates(),
+    [activeMathChallenge?.target]
+  );
   const [mathRevealed, setMathRevealed] = useState<{
     target: number;
     submissions: MathSubmission[];
@@ -97,6 +106,8 @@ export default function HostPage() {
     MatchingBoardBankItem[] | null
   >(null);
   const [selectedMatchingBoardIds, setSelectedMatchingBoardIds] = useState<string[]>([]);
+  /** How many back-to-back rounds to play for procedurally-generated rounds (letters/math). */
+  const [roundCount, setRoundCount] = useState(3);
 
   useEffect(() => {
     socket.connect();
@@ -153,6 +164,7 @@ export default function HostPage() {
     function onMathStarted(payload: MathChallenge) {
       setActiveMathChallenge(payload);
       setMathRevealed(null);
+      setTargetRevealed(false);
     }
 
     function onMathRevealed(payload: {
@@ -172,9 +184,11 @@ export default function HostPage() {
       setMatchingRevealed(null);
       setActiveMathChallenge(null);
       setMathRevealed(null);
+      setTargetRevealed(false);
       setAvailableQuestions(null);
       setSelectedQuestionIds([]);
       setAvailableMatchingBoards(null);
+      setRoundCount(3);
     }
 
     function onConnectError() {
@@ -239,6 +253,34 @@ export default function HostPage() {
     );
   };
 
+  const handleSelectAllQuestions = () => {
+    if (availableQuestions) setSelectedQuestionIds(availableQuestions.map((q) => q.id));
+  };
+  const handleDeselectAllQuestions = () => setSelectedQuestionIds([]);
+
+  const handleSelectAllMatchingBoards = () => {
+    if (availableMatchingBoards) {
+      setSelectedMatchingBoardIds(availableMatchingBoards.map((b) => b.id));
+    }
+  };
+  const handleDeselectAllMatchingBoards = () => setSelectedMatchingBoardIds([]);
+
+  const handleConfirmRoundCount = () => {
+    if (!room) return;
+    const ids = Array.from({ length: roundCount }, (_, i) => String(i));
+    socket.emit(
+      "host:select-question",
+      { code: room.code, questionIds: ids },
+      (response) => {
+        if (response.ok) {
+          setRoom(response.room);
+        } else {
+          setErrorMessage(response.error);
+        }
+      }
+    );
+  };
+
   const handleConfirmQuestions = () => {
     if (!room) return;
     const ids = room.round === "matching" ? selectedMatchingBoardIds : selectedQuestionIds;
@@ -260,6 +302,7 @@ export default function HostPage() {
     setSelectedQuestionIds([]);
     setAvailableMatchingBoards(null);
     setSelectedMatchingBoardIds([]);
+    setRoundCount(3);
     if (room) setRoom({ ...room, round: null, roundInfo: null, totalQuestions: 0 });
   };
 
@@ -422,7 +465,11 @@ export default function HostPage() {
               </Paper>
             )}
 
-            {roundChosenButNoQuestions && availableQuestions && room.round !== "matching" && (
+            {roundChosenButNoQuestions &&
+              availableQuestions &&
+              room.round !== "matching" &&
+              room.round !== "letters" &&
+              room.round !== "math" && (
               <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
                 <Stack
                   direction="row"
@@ -435,6 +482,14 @@ export default function HostPage() {
                   </Typography>
                   <Button size="small" onClick={handleChangeRound}>
                     Change Round
+                  </Button>
+                </Stack>
+                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                  <Button size="small" onClick={handleSelectAllQuestions}>
+                    Select All
+                  </Button>
+                  <Button size="small" onClick={handleDeselectAllQuestions}>
+                    Deselect All
                   </Button>
                 </Stack>
                 <List dense>
@@ -479,6 +534,14 @@ export default function HostPage() {
                     Change Round
                   </Button>
                 </Stack>
+                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                  <Button size="small" onClick={handleSelectAllMatchingBoards}>
+                    Select All
+                  </Button>
+                  <Button size="small" onClick={handleDeselectAllMatchingBoards}>
+                    Deselect All
+                  </Button>
+                </Stack>
                 <List dense>
                   {availableMatchingBoards.map((board) => (
                     <ListItem key={board.id} disablePadding>
@@ -508,11 +571,50 @@ export default function HostPage() {
               </Paper>
             )}
 
+            {roundChosenButNoQuestions &&
+              (room.round === "letters" || room.round === "math") && (
+                <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 2 }}
+                  >
+                    <Typography variant="h6">
+                      {room.roundInfo?.title}: How Many Rounds?
+                    </Typography>
+                    <Button size="small" onClick={handleChangeRound}>
+                      Change Round
+                    </Button>
+                  </Stack>
+                  <Typography color="text.secondary" sx={{ mb: 2 }}>
+                    Play this many rounds back-to-back before returning to the
+                    round picker (the tutorial is only shown once).
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+                    {[1, 2, 3, 5, 10].map((n) => (
+                      <Button
+                        key={n}
+                        variant={roundCount === n ? "contained" : "outlined"}
+                        onClick={() => setRoundCount(n)}
+                        sx={{ minWidth: 48 }}
+                      >
+                        {n}
+                      </Button>
+                    ))}
+                  </Stack>
+                  <Button variant="contained" fullWidth onClick={handleConfirmRoundCount}>
+                    Confirm {roundCount} Round{roundCount === 1 ? "" : "s"}
+                  </Button>
+                </Paper>
+              )}
+
             {readyToPlay && (
               <Paper elevation={1} sx={{ p: 2, borderRadius: 3, textAlign: "center" }}>
                 <Typography variant="h6">{room.roundInfo?.title}</Typography>
                 <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  {room.totalQuestions} question
+                  {room.totalQuestions}{" "}
+                  {room.round === "letters" || room.round === "math" ? "round" : "question"}
                   {room.totalQuestions === 1 ? "" : "s"} selected
                 </Typography>
                 <Stack direction="row" spacing={1} justifyContent="center">
@@ -625,7 +727,8 @@ export default function HostPage() {
                     sx={{ mb: 2 }}
                   >
                     <Typography variant="overline" color="text.secondary">
-                      Letters Round
+                      Letters Round · Round {room.currentQuestionIndex + 1} of{" "}
+                      {room.totalQuestions}
                     </Typography>
                     <Chip
                       size="small"
@@ -791,7 +894,8 @@ export default function HostPage() {
                     sx={{ mb: 2 }}
                   >
                     <Typography variant="overline" color="text.secondary">
-                      Math Round
+                      Math Round · Round {room.currentQuestionIndex + 1} of{" "}
+                      {room.totalQuestions}
                     </Typography>
                     <Chip
                       size="small"
@@ -808,21 +912,25 @@ export default function HostPage() {
                   <Typography variant="body2" color="text.secondary" textAlign="center">
                     Target
                   </Typography>
-                  <Typography
-                    variant="h3"
-                    textAlign="center"
-                    sx={{ fontFamily: "monospace", mb: 2 }}
-                  >
-                    {activeMathChallenge.target}
-                  </Typography>
-
-                  <Box sx={{ py: 1 }}>
+                  <Box sx={{ py: 1, display: "flex", justifyContent: "center" }}>
                     <LetterReveal
-                      letters={activeMathChallenge.numbers.map(String)}
-                      scrambleCharset={"0123456789".split("")}
-                      tileSize={56}
+                      letters={[String(activeMathChallenge.target)]}
+                      scrambleCandidatesPerTile={[targetScrambleCandidates]}
+                      tileSize={72}
+                      onComplete={() => setTargetRevealed(true)}
                     />
                   </Box>
+
+                  {targetRevealed && (
+                    <Box sx={{ py: 1 }}>
+                      <LetterReveal
+                        letters={activeMathChallenge.numbers.map(String)}
+                        scrambleCharset={"0123456789".split("")}
+                        scrambleCandidatesPerTile={MATH_SCRAMBLE_PER_TILE}
+                        tileSize={56}
+                      />
+                    </Box>
+                  )}
 
                   {mathRevealed && (
                     <>

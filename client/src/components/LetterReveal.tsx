@@ -19,6 +19,15 @@ interface LetterRevealProps {
    * numbers-round reveal instead of a letters-round one.
    */
   scrambleCharset?: string[];
+  /**
+   * Per-tile override for scramble candidates (parallel array to `letters`).
+   * Useful when different positions represent different "kinds" of value
+   * (e.g. the math round's single-digit slots vs. its medium/large-number
+   * slots) - each tile scrambles through its own plausible values instead
+   * of the shared `scrambleCharset`. Falls back to `scrambleCharset` for
+   * any position where no override is given.
+   */
+  scrambleCandidatesPerTile?: (string[] | undefined)[];
 }
 
 /**
@@ -35,6 +44,7 @@ export default function LetterReveal({
   onTileClick,
   usedIndices = [],
   scrambleCharset = ALPHABET,
+  scrambleCandidatesPerTile,
 }: LetterRevealProps) {
   const [settledCount, setSettledCount] = useState(0);
   const [scrambleChar, setScrambleChar] = useState("");
@@ -58,7 +68,8 @@ export default function LetterReveal({
     }
 
     const scrambleTimer = setInterval(() => {
-      setScrambleChar(scrambleCharset[Math.floor(Math.random() * scrambleCharset.length)]);
+      const candidates = scrambleCandidatesPerTile?.[settledCount] ?? scrambleCharset;
+      setScrambleChar(candidates[Math.floor(Math.random() * candidates.length)]);
     }, SCRAMBLE_INTERVAL_MS);
 
     const settleTimer = setTimeout(() => {

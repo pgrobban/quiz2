@@ -49,6 +49,8 @@ export interface AdvanceResult {
   room: RoomState;
   question?: Question;
   matchingBoard?: MatchingBoard;
+  letters?: string[];
+  mathChallenge?: MathChallenge;
   roundEnded: boolean;
 }
 
@@ -85,7 +87,7 @@ export type SubmitWordResult = { ok: true } | { ok: false; error: string };
 export type SubmitMatchingBoardResult = { ok: true } | { ok: false; error: string };
 
 export type SubmitMathResult =
-  | { ok: true; valid: boolean; value?: number; distance?: number }
+  | { ok: true; value: number; distance: number }
   | { ok: false; error: string };
 
 const POINTS_PER_CORRECT_ANSWER = 100;
@@ -108,8 +110,8 @@ const MATH_TIME_LIMIT_MS = 90_000;
  * shouldn't start ticking until all 12 letters have actually appeared.
  */
 const LETTERS_REVEAL_ANIMATION_MS = 12 * 3000;
-/** Same idea, but for the math round's 6-number reveal animation. */
-const MATH_REVEAL_ANIMATION_MS = 6 * 3000;
+/** Same idea, but for the math round's reveal animation: the target settles first, then the 6 numbers (7 tiles total). */
+const MATH_REVEAL_ANIMATION_MS = 7 * 3000;
 
 export { LETTERS_REVEAL_ANIMATION_MS, MATH_REVEAL_ANIMATION_MS };
 
@@ -247,13 +249,6 @@ export class RoomManager {
     internal.matchingGuesses.clear();
     internal.mathSubmissions.clear();
 
-    if (round === "letters" || round === "math") {
-      // These rounds are procedurally generated - there's no bank of
-      // questions for the host to pick from, so they're immediately "ready".
-      internal.public.totalQuestions = 1;
-      return { ok: true, room: internal.public, availableQuestions: [], availableMatchingBoards: [] };
-    }
-
     if (round === "matching") {
       return {
         ok: true,
@@ -271,7 +266,7 @@ export class RoomManager {
     };
   }
 
-  /** Host picks (and orders) which questions/boards from the selected round's bank to play. */
+  /** Host picks (and orders) which questions/boards from the selected round's bank to play, or (for letters/math) how many rounds to play. */
   selectQuestions(
     code: string,
     questionIds: string[]
@@ -286,6 +281,18 @@ export class RoomManager {
     }
     if (questionIds.length === 0) {
       return { ok: false, error: "Select at least one question." };
+    }
+
+    if (internal.public.round === "letters" || internal.public.round === "math") {
+      // These rounds are procedurally generated each time - there's no bank
+      // to pick specific items from, just how many rounds to play in a row
+      // before returning to the lobby (so the tutorial isn't repeated).
+      const count = questionIds.length;
+      if (count > 20) {
+        return { ok: false, error: "Choose 20 rounds or fewer." };
+      }
+      internal.public.totalQuestions = count;
+      return { ok: true, room: internal.public };
     }
 
     if (internal.public.round === "matching") {
@@ -529,15 +536,9 @@ export class RoomManager {
 
     const result = evaluateMathExpression(expression, challenge.numbers);
     if (!result.ok) {
-      // Still "locks in" an invalid attempt - matches the letters round's
-      // behavior of one submission per player, scored (here: 0) at reveal.
-      internal.mathSubmissions.set(playerId, {
-        expression: expression.trim(),
-        value: null,
-        distance: null,
-      });
-      internal.public.answeredCount = internal.mathSubmissions.size;
-      return { ok: true, valid: false };
+      // Rejected outright (not locked in) - the player keeps their attempt
+      // and can fix the expression and try again before time runs out.
+      return { ok: false, error: result.error };
     }
 
     const distance = Math.abs(challenge.target - result.value);
@@ -548,7 +549,7 @@ export class RoomManager {
     });
     internal.public.answeredCount = internal.mathSubmissions.size;
 
-    return { ok: true, valid: true, value: result.value, distance };
+    return { ok: true, value: result.value, distance };
   }
 
   /** Math round: scores every locked-in expression by how close it got to the target. */
@@ -593,10 +594,16 @@ export class RoomManager {
     const internal = this.rooms.get(code);
     if (!internal) return undefined;
 
-    const isMatching = internal.public.round === "matching";
+    const round = internal.public.round;
+    const isMatching = round === "matching";
+    const isLetters = round === "letters";
+    const isMath = round === "math";
+
     const totalItems = isMatching
       ? internal.selectedMatchingBoards.length
-      : internal.selectedQuestions.length;
+      : isLetters || isMath
+        ? internal.public.totalQuestions
+        : internal.selectedQuestions.length;
 
     const nextIndex = internal.public.currentQuestionIndex + 1;
     if (nextIndex >= totalItems) {
@@ -614,6 +621,24 @@ export class RoomManager {
       internal.public.phaseDeadline = Date.now() + MATCHING_TIME_LIMIT_MS;
       internal.matchingGuesses.clear();
       return { room: internal.public, matchingBoard: board, roundEnded: false };
+    }
+
+    if (isLetters) {
+      const letters = generateLetters();
+      internal.public.activeLetters = letters;
+      // Countdown starts once the reveal animation finishes, like the first
+      // round - see activateLettersTimer(), scheduled by the caller.
+      internal.public.phaseDeadline = null;
+      internal.letterSubmissions.clear();
+      return { room: internal.public, letters, roundEnded: false };
+    }
+
+    if (isMath) {
+      const challenge = generateMathChallenge();
+      internal.public.activeMathChallenge = challenge;
+      internal.public.phaseDeadline = null;
+      internal.mathSubmissions.clear();
+      return { room: internal.public, mathChallenge: challenge, roundEnded: false };
     }
 
     internal.public.phaseDeadline = Date.now() + QUESTION_TIME_LIMIT_MS;

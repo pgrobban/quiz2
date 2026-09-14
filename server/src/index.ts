@@ -289,6 +289,18 @@ io.on("connection", (socket) => {
     io.to(code).emit("room:update", result.room);
     if (result.roundEnded) {
       io.to(code).emit("game:round-ended", { players: result.room.players });
+    } else if (result.letters) {
+      io.to(code).emit("letters:started", { letters: result.letters });
+      setTimeout(() => {
+        const updatedRoom = rooms.activateLettersTimer(code);
+        if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
+      }, LETTERS_REVEAL_ANIMATION_MS);
+    } else if (result.mathChallenge) {
+      io.to(code).emit("math:started", result.mathChallenge);
+      setTimeout(() => {
+        const updatedRoom = rooms.activateMathTimer(code);
+        if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
+      }, MATH_REVEAL_ANIMATION_MS);
     } else if (result.matchingBoard) {
       io.to(code).emit("matching:board", {
         index: result.room.currentQuestionIndex,

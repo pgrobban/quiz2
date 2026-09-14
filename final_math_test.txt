@@ -1,9 +1,0 @@
-
-> quiz-game-server@1.0.0 dev
-> tsx watch src/index.ts
-
-Quiz game server listening on http://localhost:4092
-socket connected: rl08mZ8E_YjSnv38AAAA
-socket connected: blxkSRIAv5QpCWqDAAAB
-09:49:03 [tsx] change in ./src\roomManager.ts Rerunning...
-Quiz game server listening on http://localhost:4092

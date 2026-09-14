@@ -13,19 +13,13 @@ function pick<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-function shuffle<T>(items: T[]): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 /**
  * Generates a 3-digit target and 6 numbers to combine: 4 single-digit
  * numbers, one "medium" number (10/15/20), and one "large" number
- * (25/50/75/100) - a Countdown-numbers-round-style challenge.
+ * (25/50/75/100) - a Countdown-numbers-round-style challenge. The numbers
+ * are always returned in this grouped order (digits, then medium, then
+ * large) rather than shuffled together, so the reveal animation and layout
+ * can consistently reflect which "kind" of number each position holds.
  */
 export function generateMathChallenge(): MathChallenge {
   const target = randomInt(100, 999);
@@ -33,7 +27,7 @@ export function generateMathChallenge(): MathChallenge {
   for (let i = 0; i < 4; i++) numbers.push(randomInt(SMALL_MIN, SMALL_MAX));
   numbers.push(pick(MEDIUM_NUMBERS));
   numbers.push(pick(LARGE_NUMBERS));
-  return { target, numbers: shuffle(numbers) };
+  return { target, numbers };
 }
 
 // ---- Expression parsing & evaluation ----
@@ -233,11 +227,17 @@ interface SolverNode {
   value: number;
   expr: string;
   leaf: boolean;
+  /** How many of the original numbers contributed to this value - used to prefer simpler solutions. */
+  count: number;
 }
 
 /** Wraps a node's expression in parentheses unless it's a bare number. */
 function wrapNode(node: SolverNode): string {
   return node.leaf ? node.expr : `(${node.expr})`;
+}
+
+interface BestSolution extends MathSolution {
+  count: number;
 }
 
 /**
@@ -247,31 +247,27 @@ function wrapNode(node: SolverNode): string {
  * "Countdown numbers round" brute-force solver: repeatedly combine any two
  * remaining values into one, recursing until a single value is left, while
  * tracking every intermediate value along the way (since players don't have
- * to use every number).
+ * to use every number). Among equally-close answers, prefers the one using
+ * the fewest numbers (e.g. "100 * 5 - 5" over an equivalent 6-number
+ * expression), since a shorter solution is more useful to show players.
  */
 export function findClosestSolution(numbers: number[], target: number): MathSolution | null {
-  let best: MathSolution | null = null;
-  const seenStates = new Set<string>();
+  const state: { best: BestSolution | null } = { best: null };
 
   function consider(node: SolverNode) {
     const distance = Math.abs(target - node.value);
-    if (!best || distance < best.distance) {
-      best = { value: node.value, expression: node.expr, distance };
+    const best = state.best;
+    if (
+      !best ||
+      distance < best.distance ||
+      (distance === best.distance && node.count < best.count)
+    ) {
+      state.best = { value: node.value, expression: node.expr, distance, count: node.count };
     }
   }
 
   function recurse(nodes: SolverNode[]) {
-    if (best && best.distance === 0) return; // can't do better than exact
-
-    const stateKey = nodes
-      .map((n) => n.value)
-      .sort((a, b) => a - b)
-      .join(",");
-    if (seenStates.has(stateKey)) return;
-    seenStates.add(stateKey);
-
     for (const n of nodes) consider(n);
-    if (best && best.distance === 0) return;
     if (nodes.length <= 1) return;
 
     for (let i = 0; i < nodes.length; i++) {
@@ -279,22 +275,25 @@ export function findClosestSolution(numbers: number[], target: number): MathSolu
         const a = nodes[i];
         const b = nodes[j];
         const rest = nodes.filter((_, idx) => idx !== i && idx !== j);
+        const count = a.count + b.count;
 
         const candidates: SolverNode[] = [
-          { value: a.value + b.value, expr: `${wrapNode(a)} + ${wrapNode(b)}`, leaf: false },
-          { value: a.value * b.value, expr: `${wrapNode(a)} * ${wrapNode(b)}`, leaf: false },
+          { value: a.value + b.value, expr: `${wrapNode(a)} + ${wrapNode(b)}`, leaf: false, count },
+          { value: a.value * b.value, expr: `${wrapNode(a)} * ${wrapNode(b)}`, leaf: false, count },
         ];
         if (a.value > b.value) {
           candidates.push({
             value: a.value - b.value,
             expr: `${wrapNode(a)} - ${wrapNode(b)}`,
             leaf: false,
+            count,
           });
         } else if (b.value > a.value) {
           candidates.push({
             value: b.value - a.value,
             expr: `${wrapNode(b)} - ${wrapNode(a)}`,
             leaf: false,
+            count,
           });
         }
         if (b.value !== 0 && a.value % b.value === 0) {
@@ -302,6 +301,7 @@ export function findClosestSolution(numbers: number[], target: number): MathSolu
             value: a.value / b.value,
             expr: `${wrapNode(a)} / ${wrapNode(b)}`,
             leaf: false,
+            count,
           });
         }
         if (a.value !== 0 && b.value % a.value === 0) {
@@ -309,18 +309,19 @@ export function findClosestSolution(numbers: number[], target: number): MathSolu
             value: b.value / a.value,
             expr: `${wrapNode(b)} / ${wrapNode(a)}`,
             leaf: false,
+            count,
           });
         }
 
         for (const candidate of candidates) {
           recurse([...rest, candidate]);
-          if (best && (best as MathSolution).distance === 0) return;
         }
       }
     }
   }
 
-  recurse(numbers.map((n) => ({ value: n, expr: String(n), leaf: true })));
+  recurse(numbers.map((n) => ({ value: n, expr: String(n), leaf: true, count: 1 })));
 
-  return best;
+  const best = state.best;
+  return best ? { value: best.value, expression: best.expression, distance: best.distance } : null;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -31,6 +31,10 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import {
+  MATH_SCRAMBLE_PER_TILE,
+  generateTargetScrambleCandidates,
+} from "../lib/mathScramble";
 
 type ViewState =
   | "form"
@@ -83,6 +87,11 @@ export default function JoinPage() {
   // Math round state. Numbers are tapped from the reveal tiles (each usable
   // only once, like the letters round); operators/parens are free to reuse.
   const [activeMathChallenge, setActiveMathChallenge] = useState<MathChallenge | null>(null);
+  const [targetRevealed, setTargetRevealed] = useState(false);
+  const targetScrambleCandidates = useMemo(
+    () => generateTargetScrambleCandidates(),
+    [activeMathChallenge?.target]
+  );
   const [mathAnimationDone, setMathAnimationDone] = useState(false);
   const [mathTokens, setMathTokens] = useState<
     ({ type: "number"; numberIndex: number; value: number } | { type: "op"; symbol: string })[]
@@ -116,6 +125,7 @@ export default function JoinPage() {
         setMatchingRevealed(null);
         setActiveMathChallenge(null);
         setMathAnimationDone(false);
+        setTargetRevealed(false);
         setMathTokens([]);
         setMathLocked(false);
         setMathRevealed(null);
@@ -176,10 +186,12 @@ export default function JoinPage() {
     function onMathStarted(payload: MathChallenge) {
       setActiveMathChallenge(payload);
       setMathAnimationDone(false);
+      setTargetRevealed(false);
       setMathTokens([]);
       setMathLocked(false);
       setMathRevealed(null);
       setTimeExpired(false);
+      setErrorMessage(null);
       setViewState("math");
     }
 
@@ -394,6 +406,7 @@ export default function JoinPage() {
   const handleTapMathNumber = (numberIndex: number) => {
     if (mathLocked || timeExpired || !activeMathChallenge) return;
     if (usedMathNumberIndices.includes(numberIndex)) return;
+    setErrorMessage(null);
     setMathTokens((prev) => [
       ...prev,
       { type: "number", numberIndex, value: activeMathChallenge.numbers[numberIndex] },
@@ -402,21 +415,25 @@ export default function JoinPage() {
 
   const handleAppendOperator = (symbol: string) => {
     if (mathLocked || timeExpired) return;
+    setErrorMessage(null);
     setMathTokens((prev) => [...prev, { type: "op", symbol }]);
   };
 
   const handleBackspaceExpression = () => {
     if (mathLocked || timeExpired) return;
+    setErrorMessage(null);
     setMathTokens((prev) => prev.slice(0, -1));
   };
 
   const handleClearExpression = () => {
     if (mathLocked || timeExpired) return;
+    setErrorMessage(null);
     setMathTokens([]);
   };
 
   const handleLockInMath = () => {
     if (!room || mathLocked || timeExpired || mathTokens.length === 0) return;
+    setErrorMessage(null);
     setMathLocked(true);
     socket.emit(
       "player:submit-math",
@@ -604,7 +621,7 @@ export default function JoinPage() {
           <>
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="overline" color="text.secondary">
-                Letters Round
+                Letters Round · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
               </Typography>
               <Chip label={`${myScore} pts`} color="primary" size="small" />
             </Stack>
@@ -856,7 +873,7 @@ export default function JoinPage() {
           <>
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="overline" color="text.secondary">
-                Math Round
+                Math Round · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
               </Typography>
               <Chip label={`${myScore} pts`} color="primary" size="small" />
             </Stack>
@@ -875,26 +892,30 @@ export default function JoinPage() {
               <Typography variant="body2" color="text.secondary" textAlign="center">
                 Target
               </Typography>
-              <Typography
-                variant="h3"
-                textAlign="center"
-                sx={{ fontFamily: "monospace", mb: 2 }}
-              >
-                {activeMathChallenge.target}
-              </Typography>
-
-              <Box sx={{ py: 1 }}>
+              <Box sx={{ py: 1, display: "flex", justifyContent: "center" }}>
                 <LetterReveal
-                  letters={activeMathChallenge.numbers.map(String)}
-                  scrambleCharset={"0123456789".split("")}
-                  tileSize={48}
-                  onComplete={() => setMathAnimationDone(true)}
-                  onTileClick={
-                    !mathLocked && !timeExpired ? handleTapMathNumber : undefined
-                  }
-                  usedIndices={usedMathNumberIndices}
+                  letters={[String(activeMathChallenge.target)]}
+                  scrambleCandidatesPerTile={[targetScrambleCandidates]}
+                  tileSize={64}
+                  onComplete={() => setTargetRevealed(true)}
                 />
               </Box>
+
+              {targetRevealed && (
+                <Box sx={{ py: 1 }}>
+                  <LetterReveal
+                    letters={activeMathChallenge.numbers.map(String)}
+                    scrambleCharset={"0123456789".split("")}
+                    scrambleCandidatesPerTile={MATH_SCRAMBLE_PER_TILE}
+                    tileSize={48}
+                    onComplete={() => setMathAnimationDone(true)}
+                    onTileClick={
+                      !mathLocked && !timeExpired ? handleTapMathNumber : undefined
+                    }
+                    usedIndices={usedMathNumberIndices}
+                  />
+                </Box>
+              )}
 
               {!mathRevealed && (
                 <Stack spacing={2} sx={{ mt: 3 }}>
@@ -969,6 +990,12 @@ export default function JoinPage() {
                   >
                     Lock In Answer
                   </Button>
+
+                  {errorMessage && (
+                    <Alert severity="error" onClose={() => setErrorMessage(null)}>
+                      {errorMessage}
+                    </Alert>
+                  )}
 
                   {mathLocked && (
                     <Typography color="text.secondary" textAlign="center">
