@@ -578,6 +578,33 @@ export function toPublicMatchingBoard(board: MatchingBoardBankItem): MatchingBoa
 export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
   {
     id: "assoc-board-0",
+    title: "Tutorial: Västkusten",
+    columns: [
+      {
+        label: "A",
+        clues: ["Opera", "Poseidon", "Botaniska", "Liseberg"],
+        solution: "Gothenburg",
+      },
+      {
+        label: "B",
+        clues: ["Nissan", "Gyllene Tider", "Tylösand", "Krönleins"],
+        solution: "Halmstad",
+      },
+      {
+        label: "C",
+        clues: ["Shoreline", "Beach", "Cliffs", "Bay"],
+        solution: "Coast",
+      },
+      {
+        label: "D",
+        clues: ["Halland", "Bohuslän", "Skåne", "Västergötland"],
+        solution: "Götaland",
+      },
+    ],
+    finalSolution: "West coast Sweden (Västkusten)",
+  },
+  {
+    id: "assoc-board-1",
     title: "Tutorial: Volkswagen",
     columns: [
       {
@@ -604,7 +631,7 @@ export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
     finalSolution: "Volkswagen",
   },
   {
-    id: "assoc-board-1",
+    id: "assoc-board-2",
     title: "Mustache",
     columns: [
       {
@@ -629,6 +656,114 @@ export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
       }
     ],
     finalSolution: "Mustache",
+  },
+  {
+    id: "assoc-board-3",
+    title: "Sony",
+    columns: [
+      {
+        label: "A",
+        clues: ["Gran Turismo", "Spyro the Dragon", "Uncharted", "The Last of Us"],
+        solution: "PlayStation",
+      },
+      {
+        label: "B",
+        clues: ["Music", "Tape", "Player", "Headphones"],
+        solution: "Walkman",
+      },
+      {
+        label: "C",
+        clues: ["Sushi", "Tokyo", "Anime", "Manga"],
+        solution: "Japan",
+      },
+      {
+        label: "D",
+        clues: ["TV", "Camera", "Console", "Headphones"],
+        solution: "Electronics",
+      }
+    ],
+    finalSolution: "Sony",
+  },
+  {
+    id: "assoc-board-4",
+    title: "Oil",
+    columns: [
+      {
+        label: "A",
+        clues: ["Mask", "Heating", "Passing", "Neon"],
+        solution: "Gas",
+      },
+      {
+        label: "B",
+        clues: ["Rice", "Cotton", "War", "Magnet"],
+        solution: "Field",
+      },
+      {
+        label: "C",
+        clues: ["Oil", "Plant", "Chemistry", "Textile"],
+        solution: "Industry",
+      },
+      {
+        label: "D",
+        clues: ["Game genre", "Shoes", "Podium", "Streaming"],
+        solution: "Platform",
+      },
+    ],
+    finalSolution: "Oil",
+  },
+  {
+    id: "assoc-board-5",
+    title: "Physics",
+    columns: [
+      {
+        label: "A",
+        clues: ["Department", "Academics", "Research", "University"],
+        solution: "Faculty",
+      },
+      {
+        label: "B",
+        clues: ["Number", "Nucleus", "Clock", "Ant"],
+        solution: "Atom",
+      },
+      {
+        label: "C",
+        clues: ["Order", "Rule", "Court", "Murphy"],
+        solution: "Law",
+      },
+      {
+        label: "D",
+        clues: ["Europe & US", "Car", "Edison", "Alternating current"],
+        solution: "Tesla",
+      },
+    ],
+    finalSolution: "Physics",
+  },
+  {
+    id: "assoc-board-6",
+    title: "Paper",
+    columns: [
+      {
+        label: "A",
+        clues: ["Vacuum cleaner", "Gift", "Nylon", "Carrying"],
+        solution: "Bag",
+      },
+      {
+        label: "B",
+        clues: ["Crown", "Cent", "Time", "Finance"],
+        solution: "Money",
+      },
+      {
+        label: "C",
+        clues: ["Lead", "Sword", "Brush", "Ball"],
+        solution: "Pen",
+      },
+      {
+        label: "D",
+        clues: ["Tin", "Garden", "Cut", "Sharpen"],
+        solution: "Scissors",
+      },
+    ],
+    finalSolution: "Paper",
   }
 ];
 
