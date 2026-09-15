@@ -32,6 +32,8 @@ import {
   StopCircle as StopCircleIcon,
 } from "@mui/icons-material";
 import type {
+  AssociationsBoardBankItem,
+  AssociationsGuessTarget,
   GameRound,
   LetterSubmission,
   MathChallenge,
@@ -106,8 +108,20 @@ export default function HostPage() {
     MatchingBoardBankItem[] | null
   >(null);
   const [selectedMatchingBoardIds, setSelectedMatchingBoardIds] = useState<string[]>([]);
+  const [availableAssociationsBoards, setAvailableAssociationsBoards] = useState<
+    AssociationsBoardBankItem[] | null
+  >(null);
+  const [selectedAssociationsBoardIds, setSelectedAssociationsBoardIds] = useState<
+    string[]
+  >([]);
   /** How many back-to-back rounds to play for procedurally-generated rounds (letters/math). */
   const [roundCount, setRoundCount] = useState(3);
+
+  // Associations round: host-only guess judging flow.
+  const [pendingGuess, setPendingGuess] = useState<{
+    target: AssociationsGuessTarget;
+    answer: string;
+  } | null>(null);
 
   useEffect(() => {
     socket.connect();
@@ -188,6 +202,9 @@ export default function HostPage() {
       setAvailableQuestions(null);
       setSelectedQuestionIds([]);
       setAvailableMatchingBoards(null);
+      setAvailableAssociationsBoards(null);
+      setSelectedAssociationsBoardIds([]);
+      setPendingGuess(null);
       setRoundCount(3);
     }
 
@@ -235,6 +252,10 @@ export default function HostPage() {
         setSelectedQuestionIds(response.availableQuestions.map((q) => q.id));
         setAvailableMatchingBoards(response.availableMatchingBoards);
         setSelectedMatchingBoardIds(response.availableMatchingBoards.map((b) => b.id));
+        setAvailableAssociationsBoards(response.availableAssociationsBoards);
+        setSelectedAssociationsBoardIds(
+          response.availableAssociationsBoards.map((b) => b.id)
+        );
       } else {
         setErrorMessage(response.error);
       }
@@ -253,6 +274,12 @@ export default function HostPage() {
     );
   };
 
+  const toggleAssociationsBoard = (id: string) => {
+    setSelectedAssociationsBoardIds((prev) =>
+      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id]
+    );
+  };
+
   const handleSelectAllQuestions = () => {
     if (availableQuestions) setSelectedQuestionIds(availableQuestions.map((q) => q.id));
   };
@@ -264,6 +291,13 @@ export default function HostPage() {
     }
   };
   const handleDeselectAllMatchingBoards = () => setSelectedMatchingBoardIds([]);
+
+  const handleSelectAllAssociationsBoards = () => {
+    if (availableAssociationsBoards) {
+      setSelectedAssociationsBoardIds(availableAssociationsBoards.map((b) => b.id));
+    }
+  };
+  const handleDeselectAllAssociationsBoards = () => setSelectedAssociationsBoardIds([]);
 
   const handleConfirmRoundCount = () => {
     if (!room) return;
@@ -283,7 +317,12 @@ export default function HostPage() {
 
   const handleConfirmQuestions = () => {
     if (!room) return;
-    const ids = room.round === "matching" ? selectedMatchingBoardIds : selectedQuestionIds;
+    const ids =
+      room.round === "matching"
+        ? selectedMatchingBoardIds
+        : room.round === "associations"
+        ? selectedAssociationsBoardIds
+        : selectedQuestionIds;
     socket.emit(
       "host:select-question",
       { code: room.code, questionIds: ids },
@@ -302,6 +341,9 @@ export default function HostPage() {
     setSelectedQuestionIds([]);
     setAvailableMatchingBoards(null);
     setSelectedMatchingBoardIds([]);
+    setAvailableAssociationsBoards(null);
+    setSelectedAssociationsBoardIds([]);
+    setPendingGuess(null);
     setRoundCount(3);
     if (room) setRoom({ ...room, round: null, roundInfo: null, totalQuestions: 0 });
   };
@@ -336,6 +378,47 @@ export default function HostPage() {
   const handleFinishGame = () => {
     if (!room) return;
     socket.emit("host:finish-game", { code: room.code });
+  };
+
+  const handleOpenAssociationsField = (field: string) => {
+    if (!room) return;
+    socket.emit(
+      "host:open-associations-field",
+      { code: room.code, field },
+      (response) => {
+        if (!response.ok) setErrorMessage(response.error);
+      }
+    );
+  };
+
+  const handleStageGuess = (target: AssociationsGuessTarget) => {
+    if (!room) return;
+    socket.emit(
+      "host:peek-associations-answer",
+      { code: room.code, target },
+      (response) => {
+        if (response.ok) {
+          setPendingGuess({ target, answer: response.answer });
+        } else {
+          setErrorMessage(response.error);
+        }
+      }
+    );
+  };
+
+  const handleJudgeGuess = (correct: boolean) => {
+    if (!room || !pendingGuess) return;
+    socket.emit(
+      "host:judge-associations-guess",
+      { code: room.code, target: pendingGuess.target, correct },
+      (response) => {
+        if (response.ok) {
+          setPendingGuess(null);
+        } else {
+          setErrorMessage(response.error);
+        }
+      }
+    );
   };
 
   const handleLeave = () => {
@@ -572,6 +655,63 @@ export default function HostPage() {
             )}
 
             {roundChosenButNoQuestions &&
+              availableAssociationsBoards &&
+              room.round === "associations" && (
+                <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 1 }}
+                  >
+                    <Typography variant="h6">Pick Boards</Typography>
+                    <Button size="small" onClick={handleChangeRound}>
+                      Change Round
+                    </Button>
+                  </Stack>
+                  <Typography color="text.secondary" sx={{ mb: 1 }}>
+                    Only the top 2 scoring players will compete. No player
+                    devices are needed - play out loud using the host and
+                    spectate screens.
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                    <Button size="small" onClick={handleSelectAllAssociationsBoards}>
+                      Select All
+                    </Button>
+                    <Button size="small" onClick={handleDeselectAllAssociationsBoards}>
+                      Deselect All
+                    </Button>
+                  </Stack>
+                  <List dense>
+                    {availableAssociationsBoards.map((board) => (
+                      <ListItem key={board.id} disablePadding>
+                        <FormControlLabel
+                          sx={{ px: 1, width: "100%" }}
+                          control={
+                            <Checkbox
+                              checked={selectedAssociationsBoardIds.includes(board.id)}
+                              onChange={() => toggleAssociationsBoard(board.id)}
+                            />
+                          }
+                          label={`${board.title} (solution: ${board.finalSolution})`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={selectedAssociationsBoardIds.length === 0}
+                    onClick={handleConfirmQuestions}
+                    sx={{ mt: 1 }}
+                  >
+                    Confirm {selectedAssociationsBoardIds.length} Board
+                    {selectedAssociationsBoardIds.length === 1 ? "" : "s"}
+                  </Button>
+                </Paper>
+              )}
+
+            {roundChosenButNoQuestions &&
               (room.round === "letters" || room.round === "math") && (
                 <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
                   <Stack
@@ -614,7 +754,11 @@ export default function HostPage() {
                 <Typography variant="h6">{room.roundInfo?.title}</Typography>
                 <Typography color="text.secondary" sx={{ mb: 2 }}>
                   {room.totalQuestions}{" "}
-                  {room.round === "letters" || room.round === "math" ? "round" : "question"}
+                  {room.round === "letters" || room.round === "math"
+                    ? "round"
+                    : room.round === "matching" || room.round === "associations"
+                    ? "board"
+                    : "question"}
                   {room.totalQuestions === 1 ? "" : "s"} selected
                 </Typography>
                 <Stack direction="row" spacing={1} justifyContent="center">
@@ -970,6 +1114,181 @@ export default function HostPage() {
                         </List>
                       )}
                     </>
+                  )}
+                </Paper>
+              )}
+
+            {(room.phase === "question" || room.phase === "reveal") &&
+              room.round === "associations" &&
+              room.activeAssociationsBoard && (
+                <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
+                  <Typography variant="overline" color="text.secondary">
+                    Associations · Board {room.currentQuestionIndex + 1} of{" "}
+                    {room.totalQuestions}
+                  </Typography>
+                  <Typography variant="h6" textAlign="center" sx={{ mb: 2 }}>
+                    {room.activeAssociationsBoard.title}
+                  </Typography>
+
+                  {room.associationsTurn && room.phase === "question" && (
+                    <Alert
+                      severity={
+                        room.associationsTurn.mode === "guess-only"
+                          ? "warning"
+                          : "info"
+                      }
+                      sx={{ mb: 2 }}
+                    >
+                      {room.associationsTurn.finalists.find(
+                        (p) => p.id === room.associationsTurn!.activePlayerId
+                      )?.name ?? "?"}
+                      's turn -{" "}
+                      {room.associationsTurn.mode === "guess-only"
+                        ? "may only attempt a guess (no opening fields)"
+                        : "may open a field or attempt a guess"}
+                    </Alert>
+                  )}
+
+                  <Grid container spacing={1.5}>
+                    {room.activeAssociationsBoard.columns.map((col) => (
+                      <Grid item xs={6} key={col.label}>
+                        <Paper
+                          variant="outlined"
+                          sx={{
+                            p: 1.5,
+                            bgcolor: col.solved
+                              ? "rgba(74, 222, 128, 0.12)"
+                              : undefined,
+                            borderColor: col.solved ? "success.main" : undefined,
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle2"
+                            textAlign="center"
+                            sx={{ mb: 1 }}
+                          >
+                            Column {col.label}
+                          </Typography>
+                          <Stack spacing={0.5}>
+                            {col.clues.map((clue) => (
+                              <Button
+                                key={clue.field}
+                                size="small"
+                                variant={clue.text ? "outlined" : "contained"}
+                                disabled={
+                                  !!clue.text ||
+                                  room.phase !== "question" ||
+                                  !room.associationsTurn ||
+                                  room.associationsTurn.mode !== "open-or-guess"
+                                }
+                                onClick={() => handleOpenAssociationsField(clue.field)}
+                                sx={{
+                                  justifyContent: "flex-start",
+                                  textTransform: "none",
+                                  fontSize: "0.75rem",
+                                }}
+                              >
+                                {clue.text ?? `Open ${clue.field}`}
+                              </Button>
+                            ))}
+                          </Stack>
+                          {col.solved ? (
+                            <Typography
+                              variant="body2"
+                              color="success.main"
+                              textAlign="center"
+                              sx={{ mt: 1, fontWeight: 600 }}
+                            >
+                              {col.solution}
+                            </Typography>
+                          ) : (
+                            room.phase === "question" && (
+                              <Button
+                                size="small"
+                                fullWidth
+                                sx={{ mt: 1 }}
+                                onClick={() =>
+                                  handleStageGuess({ type: "column", column: col.label })
+                                }
+                              >
+                                Guess Column {col.label}
+                              </Button>
+                            )
+                          )}
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      mt: 2,
+                      p: 2,
+                      textAlign: "center",
+                      bgcolor: room.activeAssociationsBoard.finalSolved
+                        ? "rgba(74, 222, 128, 0.12)"
+                        : undefined,
+                      borderColor: room.activeAssociationsBoard.finalSolved
+                        ? "success.main"
+                        : undefined,
+                    }}
+                  >
+                    <Typography variant="subtitle2">Final Solution</Typography>
+                    {room.activeAssociationsBoard.finalSolved ? (
+                      <Typography
+                        variant="h6"
+                        color="success.main"
+                        sx={{ fontWeight: 600 }}
+                      >
+                        {room.activeAssociationsBoard.finalSolution}
+                      </Typography>
+                    ) : (
+                      room.phase === "question" && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          sx={{ mt: 1 }}
+                          onClick={() => handleStageGuess({ type: "final" })}
+                        >
+                          Guess Final Solution
+                        </Button>
+                      )
+                    )}
+                  </Paper>
+
+                  {pendingGuess && (
+                    <Paper
+                      variant="outlined"
+                      sx={{ mt: 2, p: 2, bgcolor: "rgba(255,255,255,0.04)" }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        Real answer (host only)
+                      </Typography>
+                      <Typography variant="h6" sx={{ mb: 1.5 }}>
+                        {pendingGuess.answer}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        Was the spoken guess correct?
+                      </Typography>
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          onClick={() => handleJudgeGuess(true)}
+                        >
+                          Correct
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={() => handleJudgeGuess(false)}
+                        >
+                          Incorrect
+                        </Button>
+                        <Button onClick={() => setPendingGuess(null)}>Cancel</Button>
+                      </Stack>
+                    </Paper>
                   )}
                 </Paper>
               )}

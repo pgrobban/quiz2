@@ -1,4 +1,7 @@
 import type {
+  AssociationsBoard,
+  AssociationsBoardBankItem,
+  AssociationsColumnLabel,
   GameRound,
   MatchingBoard,
   MatchingBoardBankItem,
@@ -42,7 +45,8 @@ export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
   associations: {
     id: "associations",
     title: "Associations Round",
-    description: "Guess what connects a set of clues together.",
+    description:
+      "Final round for the top 2 players: uncover clues on a 4-column wall to solve each column, then the overarching connection.",
     tutorial: { type: "image", url: "/tutorials/associations.png" },
   },
 };
@@ -306,20 +310,7 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
   letters: [],
   matching: [],
   math: [],
-  associations: [
-    {
-      id: "assoc-1",
-      text: "Bark, Ring, Leash - these all relate to what?",
-      options: ["Cats", "Dogs", "Birds", "Fish"],
-      correctIndex: 1,
-    },
-    {
-      id: "assoc-2",
-      text: "Crust, Slice, Pepperoni - these all relate to what?",
-      options: ["Pizza", "Cake", "Bread", "Burger"],
-      correctIndex: 0,
-    },
-  ],
+  associations: [],
 };
 
 export function toPublicQuestion(question: QuestionWithAnswer): Question {
@@ -577,4 +568,96 @@ export function toPublicMatchingBoard(board: MatchingBoardBankItem): MatchingBoa
     left: board.keepLeftOrder ? board.pairs.map((p) => p.left) : shuffle(board.pairs.map((p) => p.left)),
     right: shuffle(board.pairs.map((p) => p.right)),
   };
+}
+
+/**
+ * Bank of "associations" round boards - the final, host-mediated "wall"
+ * round for the top 2 players. Each board has 4 columns (A-D) of 4 clues
+ * each, a hidden solution per column, and one overarching final solution.
+ */
+export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
+  {
+    id: "assoc-board-0",
+    title: "Tutorial: Volkswagen",
+    columns: [
+      {
+        label: "A",
+        clues: ["Club", "Par", "Putt", "Driver"],
+        solution: "Golf",
+      },
+      {
+        label: "B",
+        clues: ["Horse", "Game", "Ball", "Stick"],
+        solution: "Polo",
+      },
+      {
+        label: "C",
+        clues: ["Egg-larva-pupa", "Wings", "Antennae", "Exoskeleton"],
+        solution: "Beetle",
+      },
+      {
+        label: "D",
+        clues: ["Berlin Wall", "Schwarzwald", "Wurst", "Beethoven"],
+        solution: "Germany",
+      },
+    ],
+    finalSolution: "Volkswagen",
+  },
+  {
+    id: "assoc-board-1",
+    title: "Mustache",
+    columns: [
+      {
+        label: "A",
+        clues: ["House", "Mouse", "Tiger", "Lion"],
+        solution: "Cat",
+      },
+      {
+        label: "B",
+        clues: ["Person", "Unfamiliar", "Top & front", "Smile"],
+        solution: "Face",
+      },
+      {
+        label: "C",
+        clues: ["Pattern", "Christmas tree", "Jewelry", "Ornament"],
+        solution: "Decoration",
+      },
+      {
+        label: "D",
+        clues: ["Gentle", "Boy", "Macho", "Casanova"],
+        solution: "Man"
+      }
+    ],
+    finalSolution: "Mustache",
+  }
+];
+
+/** Shown to players/spectators on the live board, regardless of which board is picked - the real theme is the solution, kept secret until solved. */
+const ASSOCIATIONS_PUBLIC_TITLE = "What connects them all?";
+
+/** Builds the public (answer-free, nothing-opened-yet) board sent to clients. */
+export function toPublicAssociationsBoard(board: AssociationsBoardBankItem): AssociationsBoard {
+  return {
+    title: ASSOCIATIONS_PUBLIC_TITLE,
+    columns: board.columns.map((col) => ({
+      label: col.label,
+      clues: col.clues.map((_, i) => ({ field: `${col.label}${i + 1}`, text: null })),
+      solved: false,
+      solution: null,
+    })),
+    finalSolved: false,
+    finalSolution: null,
+  };
+}
+
+/** Finds the real clue text for a given field id (e.g. "B3") from the bank item. */
+export function getAssociationsClueText(
+  board: AssociationsBoardBankItem,
+  field: string
+): string | null {
+  const label = field[0] as AssociationsColumnLabel;
+  const index = Number(field.slice(1)) - 1;
+  const column = board.columns.find((c) => c.label === label);
+  if (!column || index < 0 || index >= column.clues.length) return null;
+  return column.clues[index];
 }

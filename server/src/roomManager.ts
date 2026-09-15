@@ -1,5 +1,9 @@
 import { randomInt } from "node:crypto";
 import type {
+  AssociationsBoard,
+  AssociationsBoardBankItem,
+  AssociationsGuessTarget,
+  AssociationsTurnState,
   GameRound,
   LetterSubmission,
   MathChallenge,
@@ -14,10 +18,13 @@ import type {
   RoomState,
 } from "../../shared/types";
 import {
+  ASSOCIATIONS_BANK,
   MATCHING_BANK,
   QUESTION_BANK,
   ROUND_CATALOG,
   QuestionWithAnswer,
+  getAssociationsClueText,
+  toPublicAssociationsBoard,
   toPublicMatchingBoard,
   toPublicQuestion,
 } from "./questions";
@@ -35,6 +42,10 @@ interface InternalRoom {
   selectedQuestions: QuestionWithAnswer[];
   /** Ordered subset of the matching round's board bank the host chose to play, with answer keys. */
   selectedMatchingBoards: MatchingBoardBankItem[];
+  /** Ordered subset of the associations round's board bank the host chose to play, with answer keys. */
+  selectedAssociationsBoards: AssociationsBoardBankItem[];
+  /** The 2 players competing in the associations round, fixed for the whole round (all its boards). */
+  associationsFinalists: Player[] | null;
   /** playerId -> whether their submitted answer for the *current* question was correct. */
   pendingAnswers: Map<string, boolean>;
   /** playerId -> the word they've locked in for the current letters round. */
@@ -90,11 +101,20 @@ export type SubmitMathResult =
   | { ok: true; value: number; distance: number }
   | { ok: false; error: string };
 
+export type OpenAssociationsFieldResult = { ok: true } | { ok: false; error: string };
+export type PeekAssociationsAnswerResult =
+  | { ok: true; answer: string }
+  | { ok: false; error: string };
+export type JudgeAssociationsGuessResult = { ok: true } | { ok: false; error: string };
+
 const POINTS_PER_CORRECT_ANSWER = 100;
 /** Points awarded per letter of a valid word in the letters round (an 8-letter word = 80pts). */
 const POINTS_PER_LETTER = 10;
 /** Points awarded per correctly-matched pair in the matching round. */
 const POINTS_PER_CORRECT_PAIR = 100;
+/** Points awarded for correctly solving a column / the final solution in the associations round. */
+const POINTS_PER_ASSOCIATIONS_COLUMN = 100;
+const POINTS_PER_ASSOCIATIONS_FINAL = 300;
 
 /** How long players have to answer a standard multiple-choice question. */
 const QUESTION_TIME_LIMIT_MS = 15_000;
@@ -155,10 +175,14 @@ export class RoomManager {
         activeLetters: null,
         activeMatchingBoard: null,
         activeMathChallenge: null,
+        activeAssociationsBoard: null,
+        associationsTurn: null,
         phaseDeadline: null,
       },
       selectedQuestions: [],
       selectedMatchingBoards: [],
+      selectedAssociationsBoards: [],
+      associationsFinalists: null,
       pendingAnswers: new Map(),
       letterSubmissions: new Map(),
       matchingGuesses: new Map(),
@@ -227,6 +251,7 @@ export class RoomManager {
         room: RoomState;
         availableQuestions: QuestionBankItem[];
         availableMatchingBoards: MatchingBoardBankItem[];
+        availableAssociationsBoards: AssociationsBoardBankItem[];
       }
     | { ok: false; error: string } {
     const internal = this.rooms.get(code);
@@ -242,8 +267,12 @@ export class RoomManager {
     internal.public.activeLetters = null;
     internal.public.activeMatchingBoard = null;
     internal.public.activeMathChallenge = null;
+    internal.public.activeAssociationsBoard = null;
+    internal.public.associationsTurn = null;
     internal.selectedQuestions = [];
     internal.selectedMatchingBoards = [];
+    internal.selectedAssociationsBoards = [];
+    internal.associationsFinalists = null;
     internal.pendingAnswers.clear();
     internal.letterSubmissions.clear();
     internal.matchingGuesses.clear();
@@ -255,6 +284,17 @@ export class RoomManager {
         room: internal.public,
         availableQuestions: [],
         availableMatchingBoards: MATCHING_BANK,
+        availableAssociationsBoards: [],
+      };
+    }
+
+    if (round === "associations") {
+      return {
+        ok: true,
+        room: internal.public,
+        availableQuestions: [],
+        availableMatchingBoards: [],
+        availableAssociationsBoards: ASSOCIATIONS_BANK,
       };
     }
 
@@ -263,6 +303,7 @@ export class RoomManager {
       room: internal.public,
       availableQuestions: QUESTION_BANK[round],
       availableMatchingBoards: [],
+      availableAssociationsBoards: [],
     };
   }
 
@@ -304,6 +345,19 @@ export class RoomManager {
         selected.push(board);
       }
       internal.selectedMatchingBoards = selected;
+      internal.public.totalQuestions = selected.length;
+      return { ok: true, room: internal.public };
+    }
+
+    if (internal.public.round === "associations") {
+      const bank = new Map(ASSOCIATIONS_BANK.map((b) => [b.id, b]));
+      const selected: AssociationsBoardBankItem[] = [];
+      for (const id of questionIds) {
+        const board = bank.get(id);
+        if (!board) return { ok: false, error: `Unknown board id: ${id}` };
+        selected.push(board);
+      }
+      internal.selectedAssociationsBoards = selected;
       internal.public.totalQuestions = selected.length;
       return { ok: true, room: internal.public };
     }
@@ -360,6 +414,21 @@ export class RoomManager {
       internal.public.phaseDeadline = Date.now() + MATCHING_TIME_LIMIT_MS;
       internal.matchingGuesses.clear();
       return { ok: true, room: internal.public, matchingBoard: board };
+    }
+
+    if (internal.public.round === "associations") {
+      const sortedByScore = [...internal.public.players].sort((a, b) => b.score - a.score);
+      if (sortedByScore.length < 2) {
+        // Revert - we already flipped to "question" phase above.
+        internal.public.phase = "introduction";
+        internal.public.currentQuestionIndex = -1;
+        return { ok: false, error: "Need at least 2 players for the Associations round." };
+      }
+
+      const finalists = sortedByScore.slice(0, 2);
+      internal.associationsFinalists = finalists;
+      this.beginAssociationsBoard(internal, 0, finalists[0].id);
+      return { ok: true, room: internal.public };
     }
 
     internal.public.phaseDeadline = Date.now() + QUESTION_TIME_LIMIT_MS;
@@ -598,12 +667,15 @@ export class RoomManager {
     const isMatching = round === "matching";
     const isLetters = round === "letters";
     const isMath = round === "math";
+    const isAssociations = round === "associations";
 
     const totalItems = isMatching
       ? internal.selectedMatchingBoards.length
-      : isLetters || isMath
-        ? internal.public.totalQuestions
-        : internal.selectedQuestions.length;
+      : isAssociations
+        ? internal.selectedAssociationsBoards.length
+        : isLetters || isMath
+          ? internal.public.totalQuestions
+          : internal.selectedQuestions.length;
 
     const nextIndex = internal.public.currentQuestionIndex + 1;
     if (nextIndex >= totalItems) {
@@ -641,6 +713,14 @@ export class RoomManager {
       return { room: internal.public, mathChallenge: challenge, roundEnded: false };
     }
 
+    if (isAssociations) {
+      const finalists = internal.associationsFinalists ?? [];
+      // Alternate who opens the first field of each subsequent board.
+      const startingPlayerId = finalists[nextIndex % 2]?.id ?? finalists[0]?.id;
+      this.beginAssociationsBoard(internal, nextIndex, startingPlayerId);
+      return { room: internal.public, roundEnded: false };
+    }
+
     internal.public.phaseDeadline = Date.now() + QUESTION_TIME_LIMIT_MS;
     internal.pendingAnswers.clear();
 
@@ -669,13 +749,34 @@ export class RoomManager {
     internal.public.activeLetters = null;
     internal.public.activeMatchingBoard = null;
     internal.public.activeMathChallenge = null;
+    internal.public.activeAssociationsBoard = null;
+    internal.public.associationsTurn = null;
     internal.public.phaseDeadline = null;
     internal.selectedQuestions = [];
     internal.selectedMatchingBoards = [];
+    internal.selectedAssociationsBoards = [];
+    internal.associationsFinalists = null;
     internal.pendingAnswers.clear();
     internal.letterSubmissions.clear();
     internal.matchingGuesses.clear();
     internal.mathSubmissions.clear();
+  }
+
+  /** Sets up the board + turn state for a given associations board index, with the given starting player. */
+  private beginAssociationsBoard(
+    internal: InternalRoom,
+    boardIndex: number,
+    startingPlayerId: string
+  ): void {
+    const boardItem = internal.selectedAssociationsBoards[boardIndex];
+    const board = toPublicAssociationsBoard(boardItem);
+    internal.public.activeAssociationsBoard = board;
+    internal.public.associationsTurn = {
+      finalists: internal.associationsFinalists ?? [],
+      activePlayerId: startingPlayerId,
+      openerPlayerId: startingPlayerId,
+      mode: "open-or-guess",
+    };
   }
 
   /** Ends the whole game (all rounds) and freezes the final scoreboard. */
@@ -815,6 +916,176 @@ export class RoomManager {
       correctPairs: board.pairs.map((p) => ({ leftId: p.left.id, rightId: p.right.id })),
       results,
     };
+  }
+
+  /** Associations round: host opens a closed clue field for the active player to see. */
+  openAssociationsField(code: string, field: string): OpenAssociationsFieldResult {
+    const internal = this.rooms.get(code);
+    if (!internal) return { ok: false, error: "Room not found." };
+    if (internal.public.phase !== "question" || internal.public.round !== "associations") {
+      return { ok: false, error: "Not accepting board actions right now." };
+    }
+
+    const board = internal.public.activeAssociationsBoard;
+    const turn = internal.public.associationsTurn;
+    const boardItem = internal.selectedAssociationsBoards[internal.public.currentQuestionIndex];
+    if (!board || !turn || !boardItem) return { ok: false, error: "No active board." };
+    if (turn.mode !== "open-or-guess") {
+      return { ok: false, error: "This player can only attempt a guess right now." };
+    }
+
+    const label = field[0];
+    const column = board.columns.find((c) => c.label === label);
+    const slot = column?.clues.find((c) => c.field === field);
+    if (!column || !slot) return { ok: false, error: "Unknown field." };
+    if (column.solved) return { ok: false, error: "That column is already solved." };
+    if (slot.text !== null) return { ok: false, error: "That field is already open." };
+
+    const clueText = getAssociationsClueText(boardItem, field);
+    if (clueText === null) return { ok: false, error: "Unknown field." };
+
+    slot.text = clueText;
+    return { ok: true };
+  }
+
+  /**
+   * Associations round: privately reveals the real answer for a guess
+   * target to the host only. Doesn't change any state - just a lookup so
+   * the host can judge the contestant's spoken answer.
+   */
+  peekAssociationsAnswer(
+    code: string,
+    target: AssociationsGuessTarget
+  ): PeekAssociationsAnswerResult {
+    const internal = this.rooms.get(code);
+    if (!internal) return { ok: false, error: "Room not found." };
+    if (internal.public.phase !== "question" || internal.public.round !== "associations") {
+      return { ok: false, error: "Not accepting board actions right now." };
+    }
+
+    const board = internal.public.activeAssociationsBoard;
+    const boardItem = internal.selectedAssociationsBoards[internal.public.currentQuestionIndex];
+    if (!board || !boardItem) return { ok: false, error: "No active board." };
+
+    if (target.type === "final") {
+      if (board.finalSolved) return { ok: false, error: "The final solution is already solved." };
+      return { ok: true, answer: boardItem.finalSolution };
+    }
+
+    const column = boardItem.columns.find((c) => c.label === target.column);
+    const publicColumn = board.columns.find((c) => c.label === target.column);
+    if (!column || !publicColumn) return { ok: false, error: "Unknown column." };
+    if (publicColumn.solved) return { ok: false, error: "That column is already solved." };
+
+    return { ok: true, answer: column.solution };
+  }
+
+  /** Associations round: records whether the active player's spoken guess was correct, and updates whose turn it is. */
+  judgeAssociationsGuess(
+    code: string,
+    target: AssociationsGuessTarget,
+    correct: boolean
+  ): JudgeAssociationsGuessResult {
+    const internal = this.rooms.get(code);
+    if (!internal) return { ok: false, error: "Room not found." };
+    if (internal.public.phase !== "question" || internal.public.round !== "associations") {
+      return { ok: false, error: "Not accepting board actions right now." };
+    }
+
+    const board = internal.public.activeAssociationsBoard;
+    const turn = internal.public.associationsTurn;
+    const boardItem = internal.selectedAssociationsBoards[internal.public.currentQuestionIndex];
+    if (!board || !turn || !boardItem) return { ok: false, error: "No active board." };
+
+    const activePlayer = internal.public.players.find((p) => p.id === turn.activePlayerId);
+
+    if (correct) {
+      if (target.type === "final") {
+        board.finalSolved = true;
+        board.finalSolution = boardItem.finalSolution;
+        // Reveal every remaining column (clues + solution) now that the
+        // board is fully solved.
+        for (const column of board.columns) {
+          const bankColumn = boardItem.columns.find((c) => c.label === column.label);
+          if (!bankColumn) continue;
+          column.solved = true;
+          column.solution = bankColumn.solution;
+          for (const slot of column.clues) {
+            if (slot.text === null) {
+              slot.text = getAssociationsClueText(boardItem, slot.field);
+            }
+          }
+        }
+        if (activePlayer) activePlayer.score += POINTS_PER_ASSOCIATIONS_FINAL;
+      } else {
+        const column = board.columns.find((c) => c.label === target.column);
+        const bankColumn = boardItem.columns.find((c) => c.label === target.column);
+        if (!column || !bankColumn) return { ok: false, error: "Unknown column." };
+        column.solved = true;
+        column.solution = bankColumn.solution;
+        // Reveal any remaining closed clues in this column now that it's solved.
+        for (const slot of column.clues) {
+          if (slot.text === null) {
+            slot.text = getAssociationsClueText(boardItem, slot.field);
+          }
+        }
+        if (activePlayer) activePlayer.score += POINTS_PER_ASSOCIATIONS_COLUMN;
+      }
+
+      // Correct guess: this player keeps control and opens the next field.
+      turn.openerPlayerId = turn.activePlayerId;
+      turn.mode = "open-or-guess";
+      return { ok: true };
+    }
+
+    // Incorrect (or declined) guess.
+    if (turn.mode === "open-or-guess") {
+      // The opener's guess attempt failed - hand a single guess-only chance
+      // to the other finalist.
+      const other = turn.finalists.find((p) => p.id !== turn.activePlayerId);
+      turn.openerPlayerId = turn.activePlayerId;
+      turn.activePlayerId = other ? other.id : turn.activePlayerId;
+      turn.mode = "guess-only";
+    } else {
+      // The guess-only opponent also failed/passed - control reverts to the
+      // original opener, who gets to open a new field.
+      turn.activePlayerId = turn.openerPlayerId;
+      turn.mode = "open-or-guess";
+    }
+
+    return { ok: true };
+  }
+
+  /** Associations round: force-reveals whatever wasn't solved (no points awarded) and ends live play for this board. */
+  revealAssociations(code: string): RoomState | undefined {
+    const internal = this.rooms.get(code);
+    if (!internal) return undefined;
+
+    const board = internal.public.activeAssociationsBoard;
+    const boardItem = internal.selectedAssociationsBoards[internal.public.currentQuestionIndex];
+    if (!board || !boardItem) return undefined;
+
+    for (const column of board.columns) {
+      if (column.solved) continue;
+      const bankColumn = boardItem.columns.find((c) => c.label === column.label);
+      if (bankColumn) {
+        column.solved = true;
+        column.solution = bankColumn.solution;
+      }
+      // Reveal all clues in unsolved columns too, for the summary view.
+      for (const slot of column.clues) {
+        if (slot.text === null) {
+          slot.text = getAssociationsClueText(boardItem, slot.field);
+        }
+      }
+    }
+    if (!board.finalSolved) {
+      board.finalSolved = true;
+      board.finalSolution = boardItem.finalSolution;
+    }
+
+    internal.public.phase = "reveal";
+    return internal.public;
   }
 
   closeRoom(code: string): void {

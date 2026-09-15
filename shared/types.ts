@@ -57,6 +57,9 @@ export interface RoomState {
   activeMatchingBoard: MatchingBoard | null;
   /** The active target + numbers for the "math" round, while active/revealed. Null otherwise. */
   activeMathChallenge: MathChallenge | null;
+  /** The active board + turn state for the "associations" round, while active/revealed. Null otherwise. */
+  activeAssociationsBoard: AssociationsBoard | null;
+  associationsTurn: AssociationsTurnState | null;
   /**
    * Epoch ms when the current question/letters round's answer window closes.
    * Null when there's no active countdown (lobby, introduction, reveal, finished).
@@ -168,6 +171,66 @@ export interface MathRevealPayload {
   closestSolution: { value: number; expression: string; distance: number } | null;
 }
 
+// ---- Associations round ("wall"-style, final round for the top 2 players) ----
+
+export type AssociationsColumnLabel = "A" | "B" | "C" | "D";
+
+/** One clue slot in a column - text is null until the host opens it. */
+export interface AssociationsClueSlot {
+  field: string; // e.g. "A1", "B3"
+  text: string | null;
+}
+
+export interface AssociationsColumnState {
+  label: AssociationsColumnLabel;
+  clues: AssociationsClueSlot[]; // always 4
+  solved: boolean;
+  /** Revealed only once solved (or force-revealed at round end). */
+  solution: string | null;
+}
+
+/** The public board: clue text hidden until opened, solutions hidden until solved. */
+export interface AssociationsBoard {
+  title: string;
+  columns: AssociationsColumnState[]; // always 4, labeled A-D
+  finalSolved: boolean;
+  finalSolution: string | null;
+}
+
+/** Host-only bank definition: the real clues/solutions before anything is hidden. */
+export interface AssociationsBoardBankItem {
+  id: string;
+  /**
+   * A short descriptive label shown only to the host when picking boards
+   * (e.g. "Classic Sets of Four"). The board's public title, shown to
+   * everyone once the round is live, is always the generic "What connects
+   * them all?" - the real "title" is the final solution, which stays
+   * secret until it's solved (or the round ends).
+   */
+  title: string;
+  columns: {
+    label: AssociationsColumnLabel;
+    clues: [string, string, string, string];
+    solution: string;
+  }[]; // always 4
+  finalSolution: string;
+}
+
+export type AssociationsGuessTarget =
+  | { type: "column"; column: AssociationsColumnLabel }
+  | { type: "final" };
+
+export interface AssociationsTurnState {
+  /** The two players competing in this round (chosen by current score when it started). */
+  finalists: Player[];
+  /** Whose turn it is right now. */
+  activePlayerId: string;
+  /** If a guess-only attempt fails/passes, control reverts to this player to open a new field. */
+  openerPlayerId: string;
+  /** "open-or-guess": may open a new field and/or attempt a guess. "guess-only": may only attempt a guess. */
+  mode: "open-or-guess" | "guess-only";
+}
+
 export interface ClientToServerEvents {
   "host:create-room": (
     callback: (response: { ok: true; room: RoomState } | { ok: false; error: string }) => void
@@ -184,6 +247,8 @@ export interface ClientToServerEvents {
           availableQuestions: QuestionBankItem[];
           /** Populated instead of availableQuestions when round === "matching". */
           availableMatchingBoards: MatchingBoardBankItem[];
+          /** Populated instead of availableQuestions when round === "associations". */
+          availableAssociationsBoards: AssociationsBoardBankItem[];
         }
         | { ok: false; error: string }
     ) => void
@@ -263,6 +328,28 @@ export interface ClientToServerEvents {
         | { ok: true; value: number; distance: number }
         | { ok: false; error: string }
     ) => void
+  ) => void;
+
+  /** Associations round: host opens a closed clue field for the active player. */
+  "host:open-associations-field": (
+    payload: { code: string; field: string },
+    callback: (response: { ok: true } | { ok: false; error: string }) => void
+  ) => void;
+
+  /**
+   * Associations round: privately reveals the real answer for a guess target
+   * to the host only (so they can judge the contestant's spoken answer) -
+   * does not change any game state or broadcast anything.
+   */
+  "host:peek-associations-answer": (
+    payload: { code: string; target: AssociationsGuessTarget },
+    callback: (response: { ok: true; answer: string } | { ok: false; error: string }) => void
+  ) => void;
+
+  /** Associations round: host records whether the active player's spoken guess was correct. */
+  "host:judge-associations-guess": (
+    payload: { code: string; target: AssociationsGuessTarget; correct: boolean },
+    callback: (response: { ok: true } | { ok: false; error: string }) => void
   ) => void;
 
   "player:leave-room": (payload: { code: string }) => void;

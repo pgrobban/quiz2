@@ -529,9 +529,16 @@ export default function JoinPage() {
             <Typography color="text.secondary" sx={{ mt: 1 }}>
               {room.roundInfo.description}
             </Typography>
-            <Typography color="text.secondary" sx={{ mt: 2 }}>
-              Get ready - the host will start the questions shortly.
-            </Typography>
+            {room.round === "associations" ? (
+              <Typography color="text.secondary" sx={{ mt: 2 }}>
+                This round is played live by the top 2 players - watch the
+                main screen!
+              </Typography>
+            ) : (
+              <Typography color="text.secondary" sx={{ mt: 2 }}>
+                Get ready - the host will start the questions shortly.
+              </Typography>
+            )}
           </Paper>
         )}
 

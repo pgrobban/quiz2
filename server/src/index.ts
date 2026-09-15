@@ -268,6 +268,13 @@ io.on("connection", (socket) => {
       return;
     }
 
+    if (room.round === "associations") {
+      const updatedRoom = rooms.revealAssociations(code);
+      if (!updatedRoom) return;
+      io.to(code).emit("room:update", updatedRoom);
+      return;
+    }
+
     const result = rooms.revealAnswer(code);
     if (!result) return;
 
@@ -375,6 +382,47 @@ io.on("connection", (socket) => {
     if (result.ok) {
       const room = rooms.getRoom(code);
       if (room) io.to(code).emit("room:update", room);
+    }
+  });
+
+  socket.on("host:open-associations-field", ({ code, field }, callback) => {
+    const room = rooms.getRoom(code);
+    if (!room || room.hostId !== socket.id) {
+      callback({ ok: false, error: "Not authorized." });
+      return;
+    }
+
+    const result = rooms.openAssociationsField(code, field);
+    callback(result);
+    if (result.ok) {
+      const updatedRoom = rooms.getRoom(code);
+      if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
+    }
+  });
+
+  socket.on("host:peek-associations-answer", ({ code, target }, callback) => {
+    const room = rooms.getRoom(code);
+    if (!room || room.hostId !== socket.id) {
+      callback({ ok: false, error: "Not authorized." });
+      return;
+    }
+
+    // Host-only lookup - deliberately not broadcast to anyone.
+    callback(rooms.peekAssociationsAnswer(code, target));
+  });
+
+  socket.on("host:judge-associations-guess", ({ code, target, correct }, callback) => {
+    const room = rooms.getRoom(code);
+    if (!room || room.hostId !== socket.id) {
+      callback({ ok: false, error: "Not authorized." });
+      return;
+    }
+
+    const result = rooms.judgeAssociationsGuess(code, target, correct);
+    callback(result);
+    if (result.ok) {
+      const updatedRoom = rooms.getRoom(code);
+      if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
     }
   });
 
