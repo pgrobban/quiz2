@@ -107,14 +107,20 @@ export type PeekAssociationsAnswerResult =
   | { ok: false; error: string };
 export type JudgeAssociationsGuessResult = { ok: true } | { ok: false; error: string };
 
-const POINTS_PER_CORRECT_ANSWER = 100;
-/** Points awarded per letter of a valid word in the letters round (an 8-letter word = 80pts). */
-const POINTS_PER_LETTER = 10;
-/** Points awarded per correctly-matched pair in the matching round. */
-const POINTS_PER_CORRECT_PAIR = 100;
+/** Quiz is a fast, low-friction warmup round - most players tend to get most
+ * questions right, so it's weighted lighter than the more skill-testing
+ * rounds to avoid front-loading the game with points. */
+const POINTS_PER_CORRECT_ANSWER = 1;
+/** Points awarded per letter of a valid word in the letters round - doubled for longer (8+ letter) words. */
+const POINTS_PER_LETTER = 1;
+const LONG_WORD_LENGTH_THRESHOLD = 8;
+const LONG_WORD_POINTS_MULTIPLIER = 2;
+/** Points awarded per correctly-matched pair in the matching round, plus a bonus for a perfect board. */
+const POINTS_PER_CORRECT_PAIR = 1;
+const POINTS_FOR_PERFECT_MATCHING_BOARD = 2;
 /** Points awarded for correctly solving a column / the final solution in the associations round. */
-const POINTS_PER_ASSOCIATIONS_COLUMN = 100;
-const POINTS_PER_ASSOCIATIONS_FINAL = 300;
+const POINTS_PER_ASSOCIATIONS_COLUMN = 5;
+const POINTS_PER_ASSOCIATIONS_FINAL = 10;
 
 /** How long players have to answer a standard multiple-choice question. */
 const QUESTION_TIME_LIMIT_MS = 15_000;
@@ -137,9 +143,9 @@ export { LETTERS_REVEAL_ANIMATION_MS, MATH_REVEAL_ANIMATION_MS };
 
 /** Scores a math submission by how close it got to the target (closer = more points). */
 function pointsForDistance(distance: number): number {
-  if (distance === 0) return 100;
-  if (distance <= 5) return 75;
-  if (distance <= 10) return 50;
+  if (distance === 0) return 15;
+  if (distance <= 5) return 10;
+  if (distance <= 10) return 5;
   return 0;
 }
 
@@ -521,7 +527,11 @@ export class RoomManager {
       if (!word) continue;
 
       const valid = word.length >= 3 && canFormWord(word, letters) && isDictionaryWord(word);
-      const points = valid ? word.length * POINTS_PER_LETTER : 0;
+      const perLetterPoints =
+        word.length >= LONG_WORD_LENGTH_THRESHOLD
+          ? POINTS_PER_LETTER * LONG_WORD_POINTS_MULTIPLIER
+          : POINTS_PER_LETTER;
+      const points = valid ? word.length * perLetterPoints : 0;
       if (points > 0) player.score += points;
 
       submissions.push({
@@ -895,7 +905,10 @@ export class RoomManager {
     for (const player of internal.public.players) {
       const guesses = internal.matchingGuesses.get(player.id) ?? [];
       const correctCount = guesses.filter((g) => g.correct).length;
-      const points = correctCount * POINTS_PER_CORRECT_PAIR;
+      const perfectBoard = correctCount === board.pairs.length;
+      const points =
+        correctCount * POINTS_PER_CORRECT_PAIR +
+        (perfectBoard ? POINTS_FOR_PERFECT_MATCHING_BOARD : 0);
       if (points > 0) player.score += points;
 
       results.push({

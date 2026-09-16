@@ -578,30 +578,30 @@ export function toPublicMatchingBoard(board: MatchingBoardBankItem): MatchingBoa
 export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
   {
     id: "assoc-board-0",
-    title: "Tutorial: Västkusten",
+    title: "Tutorial: Panama",
     columns: [
       {
         label: "A",
-        clues: ["Opera", "Poseidon", "Botaniska", "Liseberg"],
-        solution: "Gothenburg",
+        clues: ["Cap", "Top", "Cowboy", "Head"],
+        solution: "Hat",
       },
       {
         label: "B",
-        clues: ["Nissan", "Gyllene Tider", "Tylösand", "Krönleins"],
-        solution: "Halmstad",
+        clues: ["Hungary", "Greece", "Turkey", "China"],
+        solution: "Country",
       },
       {
         label: "C",
-        clues: ["Shoreline", "Beach", "Cliffs", "Bay"],
-        solution: "Coast",
+        clues: ["North", "South", "US", "Washington"],
+        solution: "America",
       },
       {
         label: "D",
-        clues: ["Halland", "Bohuslän", "Skåne", "Västergötland"],
-        solution: "Götaland",
+        clues: ["Land", "Trench", "Irrigation", "Ditch"],
+        solution: "Canal",
       },
     ],
-    finalSolution: "West coast Sweden (Västkusten)",
+    finalSolution: "Panama",
   },
   {
     id: "assoc-board-1",
@@ -759,11 +759,65 @@ export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
       },
       {
         label: "D",
-        clues: ["Tin", "Garden", "Cut", "Sharpen"],
+        clues: ["Blades", "Garden", "Cut", "Sharpen"],
         solution: "Scissors",
       },
     ],
     finalSolution: "Paper",
+  },
+  {
+    id: "assoc-board-7",
+    title: "Fair",
+    columns: [
+      {
+        label: "A",
+        clues: ["Surikat AB", "Innovation", "Evolution", "Connectivity"],
+        solution: "Technology",
+      },
+      {
+        label: "B",
+        clues: ["Cook", "Best-seller", "Self-help", "Dictionary"],
+        solution: "Book",
+      },
+      {
+        label: "C",
+        clues: ["Race", "Limousine", "Sedan", "SUV"],
+        solution: "Car",
+      },
+      {
+        label: "D",
+        clues: ["Object in time", "Software message", "Probability outcome", "Festival"],
+        solution: "Event",
+      }
+    ],
+    finalSolution: "Fair",
+  },
+  {
+    id: "assoc-board-8",
+    title: "Sun",
+    columns: [
+      {
+        label: "A",
+        clues: ["Grandfather", "Sand", "Wrist", "Wall"],
+        solution: "Clock",
+      },
+      {
+        label: "B",
+        clues: ["Wind", "Drink", "Battery", "Generator"],
+        solution: "Energy",
+      },
+      {
+        label: "C",
+        clues: ["Eco", "Operation", "Periodic", "Solar"],
+        solution: "System",
+      },
+      {
+        label: "D",
+        clues: ["Object in time", "Software message", "Probability outcome", "Festival"],
+        solution: "Event",
+      }
+    ],
+    finalSolution: "Sun",
   }
 ];
 

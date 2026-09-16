@@ -617,7 +617,7 @@ export default function JoinPage() {
                   severity={wasCorrect ? "success" : "error"}
                   sx={{ mt: 2 }}
                 >
-                  {wasCorrect ? "Correct! +100 points" : "Not quite this time."}
+                  {wasCorrect ? "Correct! +1 point" : "Not quite this time."}
                 </Alert>
               )}
             </Paper>
