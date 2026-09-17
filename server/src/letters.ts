@@ -138,3 +138,29 @@ export function findTopWords(letters: string[], limit = 5): string[] {
   matches.sort((a, b) => b.length - a.length || a.localeCompare(b));
   return matches.slice(0, limit);
 }
+
+/** The best possible word must be at least this long, so every round has a satisfying "big word" to find. */
+const MIN_BEST_WORD_LENGTH = 10;
+/** Safety cap so a pathological dictionary/weighting combo can't loop forever. */
+const MAX_GENERATION_ATTEMPTS = 200;
+
+/**
+ * Generates a letter set for the letters round, regenerating until the best
+ * constructible dictionary word is at least `MIN_BEST_WORD_LENGTH` letters
+ * long. This check happens up-front (before the client's letter-reveal
+ * animation even starts), so players always have a long word to hunt for.
+ */
+export function generateLettersWithLongestWordGuarantee(): string[] {
+  let best: string[] = generateLetters();
+  for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
+    const candidate = attempt === 0 ? best : generateLetters();
+    const [topWord] = findTopWords(candidate, 1);
+    if (topWord && topWord.length >= MIN_BEST_WORD_LENGTH) {
+      return candidate;
+    }
+    best = candidate;
+  }
+  // Give up after the cap and just use the last attempt - better to start
+  // the round than to hang forever on an unlucky dictionary/weighting combo.
+  return best;
+}

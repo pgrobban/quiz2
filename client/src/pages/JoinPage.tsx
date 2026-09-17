@@ -8,6 +8,11 @@ import {
   Chip,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Paper,
   Stack,
   TextField,
@@ -208,6 +213,14 @@ export default function JoinPage() {
       setViewState("finished");
     }
 
+    // The host revealed the answer early (before this player's own
+    // countdown reached zero) - treat it exactly like the timer expiring,
+    // so a not-yet-locked-in matching board still gets submitted instead
+    // of silently scoring zero.
+    function onTimeUp() {
+      setTimeExpired(true);
+    }
+
     function onRoomClosed(payload: { reason: string }) {
       setErrorMessage(payload.reason);
       setViewState("form");
@@ -225,6 +238,7 @@ export default function JoinPage() {
     socket.on("math:started", onMathStarted);
     socket.on("math:revealed", onMathRevealed);
     socket.on("game:finished", onFinished);
+    socket.on("game:time-up", onTimeUp);
     socket.on("room:closed", onRoomClosed);
 
     return () => {
@@ -238,6 +252,7 @@ export default function JoinPage() {
       socket.off("math:started", onMathStarted);
       socket.off("math:revealed", onMathRevealed);
       socket.off("game:finished", onFinished);
+      socket.off("game:time-up", onTimeUp);
       socket.off("room:closed", onRoomClosed);
     };
   }, []);
@@ -300,7 +315,25 @@ export default function JoinPage() {
     );
   };
 
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
+  const gameInProgress =
+    !!room && room.phase !== "lobby" && room.phase !== "finished";
+
   const handleLeave = () => {
+    if (gameInProgress) {
+      setShowLeaveConfirm(true);
+      return;
+    }
+    if (room) {
+      socket.emit("player:leave-room", { code: room.code });
+    }
+    socket.disconnect();
+    navigate("/");
+  };
+
+  const handleConfirmLeave = () => {
+    setShowLeaveConfirm(false);
     if (room) {
       socket.emit("player:leave-room", { code: room.code });
     }
@@ -404,7 +437,7 @@ export default function JoinPage() {
 
   /** Taps a settled number tile (each usable only once, like the letters round). */
   const handleTapMathNumber = (numberIndex: number) => {
-    if (mathLocked || timeExpired || !activeMathChallenge) return;
+    if (!mathAnimationDone || mathLocked || timeExpired || !activeMathChallenge) return;
     if (usedMathNumberIndices.includes(numberIndex)) return;
     setErrorMessage(null);
     setMathTokens((prev) => [
@@ -648,7 +681,11 @@ export default function JoinPage() {
                   letters={activeLetters}
                   tileSize={44}
                   onComplete={() => setRevealAnimationDone(true)}
-                  onTileClick={!wordLocked && !timeExpired ? handleTapPoolLetter : undefined}
+                  onTileClick={
+                    revealAnimationDone && !wordLocked && !timeExpired
+                      ? handleTapPoolLetter
+                      : undefined
+                  }
                   usedIndices={wordIndices}
                 />
               </Box>
@@ -917,7 +954,9 @@ export default function JoinPage() {
                     tileSize={48}
                     onComplete={() => setMathAnimationDone(true)}
                     onTileClick={
-                      !mathLocked && !timeExpired ? handleTapMathNumber : undefined
+                      mathAnimationDone && !mathLocked && !timeExpired
+                        ? handleTapMathNumber
+                        : undefined
                     }
                     usedIndices={usedMathNumberIndices}
                   />
@@ -1068,6 +1107,22 @@ export default function JoinPage() {
           </Paper>
         )}
       </Box>
+
+      <Dialog open={showLeaveConfirm} onClose={() => setShowLeaveConfirm(false)}>
+        <DialogTitle>Leave the game?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            A round is currently in progress. If you leave now, you'll be
+            removed from the game. Are you sure you want to leave?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowLeaveConfirm(false)}>Cancel</Button>
+          <Button color="error" onClick={handleConfirmLeave}>
+            Leave
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

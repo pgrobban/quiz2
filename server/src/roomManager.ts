@@ -28,7 +28,12 @@ import {
   toPublicMatchingBoard,
   toPublicQuestion,
 } from "./questions";
-import { canFormWord, findTopWords, generateLetters, isDictionaryWord } from "./letters";
+import {
+  canFormWord,
+  findTopWords,
+  generateLettersWithLongestWordGuarantee,
+  isDictionaryWord,
+} from "./letters";
 import {
   evaluateMathExpression,
   findClosestSolution,
@@ -457,7 +462,7 @@ export class RoomManager {
       return { ok: false, error: "Show the tutorial before starting the round." };
     }
 
-    const letters = generateLetters();
+    const letters = generateLettersWithLongestWordGuarantee();
     internal.public.phase = "question";
     internal.public.currentQuestionIndex = 0;
     internal.public.answeredCount = 0;
@@ -706,7 +711,7 @@ export class RoomManager {
     }
 
     if (isLetters) {
-      const letters = generateLetters();
+      const letters = generateLettersWithLongestWordGuarantee();
       internal.public.activeLetters = letters;
       // Countdown starts once the reveal animation finishes, like the first
       // round - see activateLettersTimer(), scheduled by the caller.

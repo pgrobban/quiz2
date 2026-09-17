@@ -4,6 +4,7 @@ import cors from "cors";
 import { Server } from "socket.io";
 import type {
   ClientToServerEvents,
+  GameRound,
   InterServerEvents,
   ServerToClientEvents,
   SocketData,
@@ -11,6 +12,18 @@ import type {
 import { LETTERS_REVEAL_ANIMATION_MS, MATH_REVEAL_ANIMATION_MS, RoomManager } from "./roomManager";
 
 const PORT = Number(process.env.PORT) || 4000;
+
+/**
+ * Rounds where players lock in their answer once (letters/matching/math)
+ * rely on the client's own countdown reaching zero to auto-submit (or, for
+ * letters/math, on the player manually locking in beforehand). If the host
+ * reveals the answer early - before that client-side timer naturally
+ * expires - those submissions would never arrive. So we give clients a
+ * short grace window to submit whatever they have before actually scoring.
+ */
+const REVEAL_GRACE_PERIOD_MS = 400;
+/** Room codes currently in that grace window, to ignore a double reveal-answer click. */
+const revealsInProgress = new Set<string>();
 
 // In dev, Vite may fall back to a different port (5174, 5175, ...) if 5173
 // is already taken by something else on your machine. Rather than hardcode
@@ -230,7 +243,26 @@ io.on("connection", (socket) => {
     const room = rooms.getRoom(code);
     if (!room || room.hostId !== socket.id) return;
 
-    if (room.round === "letters") {
+    if (room.round === "letters" || room.round === "matching" || room.round === "math") {
+      if (room.phase !== "question" || revealsInProgress.has(code)) return;
+      revealsInProgress.add(code);
+      // Tell clients time's up right now, so anyone relying on their own
+      // countdown (or who hasn't locked in yet) submits immediately -
+      // then wait a beat for those submissions to actually arrive before
+      // scoring, instead of scoring whatever happened to already be in.
+      io.to(code).emit("game:time-up");
+      setTimeout(() => {
+        revealsInProgress.delete(code);
+        performReveal(code, room.round!);
+      }, REVEAL_GRACE_PERIOD_MS);
+      return;
+    }
+
+    performReveal(code, room.round);
+  });
+
+  function performReveal(code: string, round: GameRound | null) {
+    if (round === "letters") {
       const result = rooms.revealLetters(code);
       if (!result) return;
       io.to(code).emit("room:update", result.room);
@@ -242,7 +274,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    if (room.round === "matching") {
+    if (round === "matching") {
       const result = rooms.revealMatching(code);
       if (!result) return;
       io.to(code).emit("room:update", result.room);
@@ -255,7 +287,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    if (room.round === "math") {
+    if (round === "math") {
       const result = rooms.revealMath(code);
       if (!result) return;
       io.to(code).emit("room:update", result.room);
@@ -268,7 +300,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    if (room.round === "associations") {
+    if (round === "associations") {
       const updatedRoom = rooms.revealAssociations(code);
       if (!updatedRoom) return;
       io.to(code).emit("room:update", updatedRoom);
@@ -284,7 +316,7 @@ io.on("connection", (socket) => {
       correctIndex: result.correctIndex,
       players: result.room.players,
     });
-  });
+  }
 
   socket.on("host:next-question", ({ code }) => {
     const room = rooms.getRoom(code);

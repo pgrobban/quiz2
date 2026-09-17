@@ -20,27 +20,27 @@ export interface QuestionWithAnswer extends Question {
 export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
   quiz: {
     id: "quiz",
-    title: "Standard Quiz",
-    description: "Classic multiple-choice trivia. Fastest correct answers win.",
-    tutorial: { type: "image", url: "/tutorials/quiz.png" },
+    title: "Should I know this?",
+    description: "Classic multiple-choice trivia. 1p for each correct answer",
+    tutorial: { type: "image", url: "/tutorials/quiz.gif" },
   },
   letters: {
     id: "letters",
     title: "Letters Round",
-    description: "Spot the odd one out, or find the hidden word amongst the letters.",
-    tutorial: { type: "image", url: "/tutorials/letters.png" },
+    description: "Make the longest word you can from the given letters. If your word is in the dictionary, you get 1p per letter, double points for long words (>= 8 letters).",
+    tutorial: { type: "video", url: "/tutorials/letters.mp4" },
   },
   matching: {
     id: "matching",
     title: "Matching Round",
-    description: "Match pairs of related items as fast as you can.",
-    tutorial: { type: "image", url: "/tutorials/matching.png" },
+    description: "Match pairs of related items before the timer runs out. 1p for each correct pair, +2 for a perfect board.",
+    tutorial: { type: "video", url: "/tutorials/matching.mp4" },
   },
   math: {
     id: "math",
     title: "Math Round",
-    description: "Quick mental math - pick the correct result before time runs out.",
-    tutorial: { type: "image", url: "/tutorials/math.png" },
+    description: "Get as close as you can to the target number using the given numbers and basic arithmetic. 15p for an exact match, 10p if within 5, 5p if within 10.",
+    tutorial: { type: "video", url: "/tutorials/math.mp4" },
   },
   associations: {
     id: "associations",

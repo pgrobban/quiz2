@@ -12,6 +12,11 @@ import {
   Chip,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   FormControlLabel,
   Grid,
   List,
@@ -56,7 +61,7 @@ import {
 type ConnectionState = "connecting" | "ready" | "error";
 
 const ROUND_OPTIONS: { id: GameRound; label: string }[] = [
-  { id: "quiz", label: "Standard Quiz" },
+  { id: "quiz", label: "Should I know this?" },
   { id: "letters", label: "Letters Round" },
   { id: "matching", label: "Matching Round" },
   { id: "math", label: "Math Round" },
@@ -321,8 +326,8 @@ export default function HostPage() {
       room.round === "matching"
         ? selectedMatchingBoardIds
         : room.round === "associations"
-        ? selectedAssociationsBoardIds
-        : selectedQuestionIds;
+          ? selectedAssociationsBoardIds
+          : selectedQuestionIds;
     socket.emit(
       "host:select-question",
       { code: room.code, questionIds: ids },
@@ -421,7 +426,21 @@ export default function HostPage() {
     );
   };
 
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
+  const gameInProgress =
+    !!room && room.phase !== "lobby" && room.phase !== "finished";
+
   const handleLeave = () => {
+    if (gameInProgress) {
+      setShowLeaveConfirm(true);
+      return;
+    }
+    navigate("/");
+  };
+
+  const handleConfirmLeave = () => {
+    setShowLeaveConfirm(false);
     navigate("/");
   };
 
@@ -553,56 +572,56 @@ export default function HostPage() {
               room.round !== "matching" &&
               room.round !== "letters" &&
               room.round !== "math" && (
-              <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{ mb: 1 }}
-                >
-                  <Typography variant="h6">
-                    {room.roundInfo?.title}: Pick Questions
-                  </Typography>
-                  <Button size="small" onClick={handleChangeRound}>
-                    Change Round
+                <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 1 }}
+                  >
+                    <Typography variant="h6">
+                      {room.roundInfo?.title}: Pick Questions
+                    </Typography>
+                    <Button size="small" onClick={handleChangeRound}>
+                      Change Round
+                    </Button>
+                  </Stack>
+                  <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                    <Button size="small" onClick={handleSelectAllQuestions}>
+                      Select All
+                    </Button>
+                    <Button size="small" onClick={handleDeselectAllQuestions}>
+                      Deselect All
+                    </Button>
+                  </Stack>
+                  <List dense>
+                    {availableQuestions.map((q) => (
+                      <ListItem key={q.id} disablePadding>
+                        <FormControlLabel
+                          sx={{ px: 1, width: "100%" }}
+                          control={
+                            <Checkbox
+                              checked={selectedQuestionIds.includes(q.id)}
+                              onChange={() => toggleQuestion(q.id)}
+                            />
+                          }
+                          label={q.text}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={selectedQuestionIds.length === 0}
+                    onClick={handleConfirmQuestions}
+                    sx={{ mt: 1 }}
+                  >
+                    Confirm {selectedQuestionIds.length} Question
+                    {selectedQuestionIds.length === 1 ? "" : "s"}
                   </Button>
-                </Stack>
-                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                  <Button size="small" onClick={handleSelectAllQuestions}>
-                    Select All
-                  </Button>
-                  <Button size="small" onClick={handleDeselectAllQuestions}>
-                    Deselect All
-                  </Button>
-                </Stack>
-                <List dense>
-                  {availableQuestions.map((q) => (
-                    <ListItem key={q.id} disablePadding>
-                      <FormControlLabel
-                        sx={{ px: 1, width: "100%" }}
-                        control={
-                          <Checkbox
-                            checked={selectedQuestionIds.includes(q.id)}
-                            onChange={() => toggleQuestion(q.id)}
-                          />
-                        }
-                        label={q.text}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  disabled={selectedQuestionIds.length === 0}
-                  onClick={handleConfirmQuestions}
-                  sx={{ mt: 1 }}
-                >
-                  Confirm {selectedQuestionIds.length} Question
-                  {selectedQuestionIds.length === 1 ? "" : "s"}
-                </Button>
-              </Paper>
-            )}
+                </Paper>
+              )}
 
             {roundChosenButNoQuestions && availableMatchingBoards && room.round === "matching" && (
               <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
@@ -757,8 +776,8 @@ export default function HostPage() {
                   {room.round === "letters" || room.round === "math"
                     ? "round"
                     : room.round === "matching" || room.round === "associations"
-                    ? "board"
-                    : "question"}
+                      ? "board"
+                      : "question"}
                   {room.totalQuestions === 1 ? "" : "s"} selected
                 </Typography>
                 <Stack direction="row" spacing={1} justifyContent="center">
@@ -782,20 +801,36 @@ export default function HostPage() {
                 <Typography color="text.secondary" sx={{ mt: 1, mb: 2 }}>
                   {room.roundInfo.description}
                 </Typography>
-                <Box
-                  component="img"
-                  src={room.roundInfo.tutorial.url}
-                  alt={`${room.roundInfo.title} tutorial`}
-                  sx={{
-                    width: "100%",
-                    borderRadius: 2,
-                    bgcolor: "background.default",
-                    mb: 2,
-                  }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
+                {room.roundInfo.tutorial.type === "video" ? (
+                  <Box
+                    component="video"
+                    src={room.roundInfo.tutorial.url}
+                    autoPlay
+                    muted
+                    playsInline
+                    sx={{
+                      width: "100%",
+                      borderRadius: 2,
+                      bgcolor: "background.default",
+                      mb: 2,
+                    }}
+                  />
+                ) : (
+                  <Box
+                    component="img"
+                    src={room.roundInfo.tutorial.url}
+                    alt={`${room.roundInfo.title} tutorial`}
+                    sx={{
+                      width: "100%",
+                      borderRadius: 2,
+                      bgcolor: "background.default",
+                      mb: 2,
+                    }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                )}
                 <Button
                   variant="contained"
                   size="large"
@@ -1100,9 +1135,8 @@ export default function HostPage() {
                           {mathRevealed.submissions.map((sub) => (
                             <ListItem key={sub.playerId}>
                               <ListItemText
-                                primary={`${sub.playerName}: ${sub.expression} ${
-                                  sub.value !== null ? `= ${sub.value}` : ""
-                                }`}
+                                primary={`${sub.playerName}: ${sub.expression} ${sub.value !== null ? `= ${sub.value}` : ""
+                                  }`}
                                 secondary={
                                   sub.value !== null
                                     ? `${sub.distance} away from target - +${sub.points} pts`
@@ -1369,6 +1403,22 @@ export default function HostPage() {
           </>
         )}
       </Box>
+
+      <Dialog open={showLeaveConfirm} onClose={() => setShowLeaveConfirm(false)}>
+        <DialogTitle>Leave the game?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            A game is currently in progress. If you leave now, the room will
+            be closed for everyone. Are you sure you want to leave?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowLeaveConfirm(false)}>Cancel</Button>
+          <Button color="error" onClick={handleConfirmLeave}>
+            Leave
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

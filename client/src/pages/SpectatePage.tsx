@@ -8,6 +8,11 @@ import {
   Chip,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Grid,
   List,
   ListItem,
@@ -160,12 +165,18 @@ export default function SpectatePage() {
     };
   }, []);
 
-  // No dedicated "math round started" event here (Spectate just reflects
-  // room state) - reset the target's reveal gate whenever the actual
-  // challenge content changes, not on every unrelated room:update.
+  // No dedicated "math/letters/matching round started" event here (Spectate
+  // just reflects room state) - reset each round's local reveal/animation
+  // state whenever a *new* round begins (currentQuestionIndex changes),
+  // not just when returning to the lobby. Otherwise, when several rounds of
+  // the same type are played back-to-back, the previous round's reveal
+  // (e.g. "Best Possible Words") stays visible on top of the new round.
   useEffect(() => {
     setTargetRevealed(false);
-  }, [room?.activeMathChallenge?.target, room?.activeMathChallenge?.numbers.join(",")]);
+    setLettersReveal(null);
+    setMatchingRevealed(null);
+    setMathRevealed(null);
+  }, [room?.currentQuestionIndex]);
 
   const handleWatch = () => {
     const trimmedCode = code.trim();
@@ -200,7 +211,22 @@ export default function SpectatePage() {
     }
   };
 
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
+  const gameInProgress =
+    !!room && room.phase !== "lobby" && room.phase !== "finished";
+
   const handleLeave = () => {
+    if (gameInProgress) {
+      setShowLeaveConfirm(true);
+      return;
+    }
+    socket.disconnect();
+    navigate("/");
+  };
+
+  const handleConfirmLeave = () => {
+    setShowLeaveConfirm(false);
     socket.disconnect();
     navigate("/");
   };
@@ -349,15 +375,38 @@ export default function SpectatePage() {
                     <Typography color="text.secondary" sx={{ maxWidth: 480 }}>
                       {room.roundInfo.description}
                     </Typography>
-                    <Box
-                      component="img"
-                      src={room.roundInfo.tutorial.url}
-                      alt={`${room.roundInfo.title} tutorial`}
-                      sx={{ maxWidth: "100%", maxHeight: 260, borderRadius: 2 }}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
+                    {room.roundInfo.tutorial.type === "video" ? (
+                      <Box
+                        component="video"
+                        src={room.roundInfo.tutorial.url}
+                        autoPlay
+                        muted
+                        playsInline
+                        sx={{
+                          width: "100%",
+                          maxWidth: 640,
+                          maxHeight: "55vh",
+                          objectFit: "contain",
+                          borderRadius: 2,
+                        }}
+                      />
+                    ) : (
+                      <Box
+                        component="img"
+                        src={room.roundInfo.tutorial.url}
+                        alt={`${room.roundInfo.title} tutorial`}
+                        sx={{
+                          width: "100%",
+                          maxWidth: 640,
+                          maxHeight: "55vh",
+                          objectFit: "contain",
+                          borderRadius: 2,
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    )}
                     <Typography color="text.secondary" variant="body2">
                       Get ready - questions start shortly!
                     </Typography>
@@ -371,7 +420,7 @@ export default function SpectatePage() {
                   question && (
                     <Stack flexGrow={1} justifyContent="center" spacing={3}>
                       {room.phaseDeadline !== null && (
-                        <Box sx={{ maxWidth: 480, mx: "auto", width: "100%" }}>
+                        <Box sx={{ width: "100%" }}>
                           <CountdownBar deadline={room.phaseDeadline} totalSeconds={15} />
                         </Box>
                       )}
@@ -423,12 +472,12 @@ export default function SpectatePage() {
                   room.activeLetters && (
                     <Stack flexGrow={1} justifyContent="center" spacing={3}>
                       {room.phaseDeadline !== null && (
-                        <Box sx={{ maxWidth: 480, mx: "auto", width: "100%" }}>
+                        <Box sx={{ width: "100%" }}>
                           <CountdownBar deadline={room.phaseDeadline} totalSeconds={60} />
                         </Box>
                       )}
                       <Box sx={{ py: 2 }}>
-                        <LetterReveal letters={room.activeLetters} tileSize={56} />
+                        <LetterReveal letters={room.activeLetters} tileSize={48} />
                       </Box>
 
                       {!lettersReveal && (
@@ -492,7 +541,7 @@ export default function SpectatePage() {
                   room.activeMatchingBoard && (
                     <Stack flexGrow={1} justifyContent="center" spacing={3}>
                       {room.phaseDeadline !== null && (
-                        <Box sx={{ maxWidth: 480, mx: "auto", width: "100%" }}>
+                        <Box sx={{ width: "100%" }}>
                           <CountdownBar deadline={room.phaseDeadline} totalSeconds={90} />
                         </Box>
                       )}
@@ -628,7 +677,7 @@ export default function SpectatePage() {
                   room.activeMathChallenge && (
                     <Stack flexGrow={1} justifyContent="center" spacing={3}>
                       {room.phaseDeadline !== null && (
-                        <Box sx={{ maxWidth: 480, mx: "auto", width: "100%" }}>
+                        <Box sx={{ width: "100%" }}>
                           <CountdownBar deadline={room.phaseDeadline} totalSeconds={90} />
                         </Box>
                       )}
@@ -904,6 +953,22 @@ export default function SpectatePage() {
           </Grid>
         )}
       </Box>
+
+      <Dialog open={showLeaveConfirm} onClose={() => setShowLeaveConfirm(false)}>
+        <DialogTitle>Leave the game?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            A round is currently in progress. Are you sure you want to stop
+            watching?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowLeaveConfirm(false)}>Cancel</Button>
+          <Button color="error" onClick={handleConfirmLeave}>
+            Leave
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

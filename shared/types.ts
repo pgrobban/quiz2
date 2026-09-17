@@ -374,6 +374,13 @@ export interface ServerToClientEvents {
   /** The current round's questions have all been played (or the host ended it early). */
   "game:round-ended": (payload: { players: Player[] }) => void;
   "game:finished": (payload: { players: Player[] }) => void;
+  /**
+   * Sent right before the host's reveal is scored for "lock-in-once" rounds
+   * (letters/matching/math), so any player who hasn't submitted yet (and was
+   * relying on their own countdown reaching zero) submits their current
+   * answer immediately instead of losing it to the host revealing early.
+   */
+  "game:time-up": () => void;
   "room:closed": (payload: { reason: string }) => void;
   "error-message": (payload: { message: string }) => void;
 }
