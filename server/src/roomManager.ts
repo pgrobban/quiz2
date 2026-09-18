@@ -57,7 +57,7 @@ interface InternalRoom {
   letterSubmissions: Map<string, string>;
   /** playerId -> the pairs they've locked in so far for the current matching board. */
   matchingGuesses: Map<string, MatchingGuess[]>;
-  /** playerId -> their locked-in expression + evaluated result for the current math round. */
+  /** playerId -> their locked-in expression + evaluated result for the current My Number round. */
   mathSubmissions: Map<string, { expression: string; value: number | null; distance: number | null }>;
 }
 
@@ -133,7 +133,7 @@ const QUESTION_TIME_LIMIT_MS = 15_000;
 const LETTERS_TIME_LIMIT_MS = 60_000;
 /** How long players have to match as many pairs as they can in the matching round. */
 const MATCHING_TIME_LIMIT_MS = 90_000;
-/** How long players have to combine the numbers in the math round. */
+/** How long players have to combine the numbers in the My Number round. */
 const MATH_TIME_LIMIT_MS = 90_000;
 /**
  * How long the client-side letter reveal animation takes (12 letters x 3s
@@ -141,7 +141,7 @@ const MATH_TIME_LIMIT_MS = 90_000;
  * shouldn't start ticking until all 12 letters have actually appeared.
  */
 const LETTERS_REVEAL_ANIMATION_MS = 12 * 3000;
-/** Same idea, but for the math round's reveal animation: the target settles first, then the 6 numbers (7 tiles total). */
+/** Same idea, but for the My Number round's reveal animation: the target settles first, then the 6 numbers (7 tiles total). */
 const MATH_REVEAL_ANIMATION_MS = 7 * 3000;
 
 export { LETTERS_REVEAL_ANIMATION_MS, MATH_REVEAL_ANIMATION_MS };
@@ -258,12 +258,12 @@ export class RoomManager {
     round: GameRound
   ):
     | {
-        ok: true;
-        room: RoomState;
-        availableQuestions: QuestionBankItem[];
-        availableMatchingBoards: MatchingBoardBankItem[];
-        availableAssociationsBoards: AssociationsBoardBankItem[];
-      }
+      ok: true;
+      room: RoomState;
+      availableQuestions: QuestionBankItem[];
+      availableMatchingBoards: MatchingBoardBankItem[];
+      availableAssociationsBoards: AssociationsBoardBankItem[];
+    }
     | { ok: false; error: string } {
     const internal = this.rooms.get(code);
     if (!internal) return { ok: false, error: "Room not found." };
@@ -559,7 +559,7 @@ export class RoomManager {
     };
   }
 
-  /** Math round: generates the target + 6 numbers and moves from the tutorial screen into play. */
+  /** My Number round: generates the target + 6 numbers and moves from the tutorial screen into play. */
   startMathRound(
     code: string
   ): { ok: true; room: RoomState; challenge: MathChallenge } | { ok: false; error: string } {
@@ -583,7 +583,7 @@ export class RoomManager {
   }
 
   /**
-   * Starts the actual answer countdown for the math round, once the reveal
+   * Starts the actual answer countdown for the My Number round, once the reveal
    * animation has had time to finish on clients. No-ops if the round has
    * since moved on (host ended it early, etc).
    */
@@ -598,7 +598,7 @@ export class RoomManager {
     return internal.public;
   }
 
-  /** Math round: locks in a player's expression (one submission per player per round). */
+  /** My Number round: locks in a player's expression (one submission per player per round). */
   submitMath(code: string, playerId: string, expression: string): SubmitMathResult {
     const internal = this.rooms.get(code);
     if (!internal) return { ok: false, error: "Room not found." };
@@ -636,7 +636,7 @@ export class RoomManager {
     return { ok: true, value: result.value, distance };
   }
 
-  /** Math round: scores every locked-in expression by how close it got to the target. */
+  /** My Number round: scores every locked-in expression by how close it got to the target. */
   revealMath(code: string): MathRevealResult | undefined {
     const internal = this.rooms.get(code);
     if (!internal || !internal.public.activeMathChallenge) return undefined;

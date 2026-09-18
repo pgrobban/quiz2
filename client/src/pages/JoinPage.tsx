@@ -89,7 +89,7 @@ export default function JoinPage() {
     results: MatchingPlayerResult[];
   } | null>(null);
 
-  // Math round state. Numbers are tapped from the reveal tiles (each usable
+  // My Number round state. Numbers are tapped from the reveal tiles (each usable
   // only once, like the letters round); operators/parens are free to reuse.
   const [activeMathChallenge, setActiveMathChallenge] = useState<MathChallenge | null>(null);
   const [targetRevealed, setTargetRevealed] = useState(false);
@@ -917,7 +917,7 @@ export default function JoinPage() {
           <>
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="overline" color="text.secondary">
-                Math Round · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
+                My Number · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
               </Typography>
               <Chip label={`${myScore} pts`} color="primary" size="small" />
             </Stack>

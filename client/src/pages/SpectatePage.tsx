@@ -310,7 +310,7 @@ export default function SpectatePage() {
                     room.round !== "matching" &&
                     room.round !== "math" && (
                       <Chip
-                        label={`Question ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        label={`Should I know this? ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
                       />
                     )}
@@ -326,7 +326,7 @@ export default function SpectatePage() {
                     room.phase !== "lobby" &&
                     room.phase !== "finished" && (
                       <Chip
-                        label={`Matching · Board ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        label={`Making connections · Board ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
                       />
                     )}
@@ -334,7 +334,7 @@ export default function SpectatePage() {
                     room.phase !== "lobby" &&
                     room.phase !== "finished" && (
                       <Chip
-                        label={`Math · Round ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        label={`My Number · Round ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
                       />
                     )}
@@ -500,9 +500,8 @@ export default function SpectatePage() {
                             {lettersReveal.submissions.map((sub) => (
                               <Grid item key={sub.playerId}>
                                 <Chip
-                                  label={`${sub.playerName}: ${sub.word} ${
-                                    sub.valid ? `(+${sub.points})` : "(invalid)"
-                                  }`}
+                                  label={`${sub.playerName}: ${sub.word} ${sub.valid ? `(+${sub.points})` : "(invalid)"
+                                    }`}
                                   color={sub.valid ? "success" : "default"}
                                 />
                               </Grid>
@@ -556,14 +555,14 @@ export default function SpectatePage() {
                             {room.activeMatchingBoard.left.map((item) => {
                               const pairIndex = matchingRevealed
                                 ? matchingRevealed.correctPairs.findIndex(
-                                    (p) => p.leftId === item.id
-                                  )
+                                  (p) => p.leftId === item.id
+                                )
                                 : -1;
                               const rightText =
                                 pairIndex !== -1
                                   ? room.activeMatchingBoard?.right.find(
-                                      (r) => r.id === matchingRevealed?.correctPairs[pairIndex].rightId
-                                    )?.text
+                                    (r) => r.id === matchingRevealed?.correctPairs[pairIndex].rightId
+                                  )?.text
                                   : undefined;
                               const color =
                                 pairIndex !== -1 ? resolvePairColor(pairIndex, rightText) : null;
@@ -593,8 +592,8 @@ export default function SpectatePage() {
                             {room.activeMatchingBoard.right.map((item) => {
                               const pairIndex = matchingRevealed
                                 ? matchingRevealed.correctPairs.findIndex(
-                                    (p) => p.rightId === item.id
-                                  )
+                                  (p) => p.rightId === item.id
+                                )
                                 : -1;
                               const color =
                                 pairIndex !== -1
@@ -878,7 +877,7 @@ export default function SpectatePage() {
                                   color: clue.text ? undefined : "text.secondary",
                                 }}
                               >
-                                {clue.text ?? "?"}
+                                {clue.text ?? clue.field}
                               </Paper>
                             );
                           };

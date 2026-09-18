@@ -38,7 +38,7 @@ export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
   },
   math: {
     id: "math",
-    title: "Math Round",
+    title: "My Number",
     description: "Get as close as you can to the target number using the given numbers and basic arithmetic. 15p for an exact match, 10p if within 5, 5p if within 10.",
     tutorial: { type: "video", url: "/tutorials/math.mp4" },
   },
@@ -46,8 +46,8 @@ export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
     id: "associations",
     title: "Associations Round",
     description:
-      "Final round for the top 2 players: uncover clues on a 4-column wall to solve each column, then the overarching connection.",
-    tutorial: { type: "image", url: "/tutorials/associations.png" },
+      "Final round for the top 2 players: uncover clues on a 4-column wall to solve each column, then the overarching connection. 5 points for each column solved, 10 points for the final connection.",
+    tutorial: { type: "video", url: "/tutorials/associations.mp4" },
   },
 };
 
@@ -605,7 +605,7 @@ export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
   },
   {
     id: "assoc-board-1",
-    title: "Tutorial: Volkswagen",
+    title: "Volkswagen",
     columns: [
       {
         label: "A",

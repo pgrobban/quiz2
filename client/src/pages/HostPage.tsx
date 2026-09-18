@@ -64,7 +64,7 @@ const ROUND_OPTIONS: { id: GameRound; label: string }[] = [
   { id: "quiz", label: "Should I know this?" },
   { id: "letters", label: "Letters Round" },
   { id: "matching", label: "Matching Round" },
-  { id: "math", label: "Math Round" },
+  { id: "math", label: "My Number" },
   { id: "associations", label: "Associations Round" },
 ];
 
@@ -91,7 +91,7 @@ export default function HostPage() {
     results: MatchingPlayerResult[];
   } | null>(null);
 
-  // Math round state.
+  // My Number round state.
   const [activeMathChallenge, setActiveMathChallenge] = useState<MathChallenge | null>(null);
   const [targetRevealed, setTargetRevealed] = useState(false);
   const targetScrambleCandidates = useMemo(
@@ -1073,7 +1073,7 @@ export default function HostPage() {
                     sx={{ mb: 2 }}
                   >
                     <Typography variant="overline" color="text.secondary">
-                      Math Round · Round {room.currentQuestionIndex + 1} of{" "}
+                      My Number · Round {room.currentQuestionIndex + 1} of{" "}
                       {room.totalQuestions}
                     </Typography>
                     <Chip

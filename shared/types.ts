@@ -145,13 +145,13 @@ export interface MatchingRevealPayload {
   players: Player[];
 }
 
-/** The target number + 6 numbers to combine for the "math" round. */
+/** The target number + 6 numbers to combine for the My Number round. */
 export interface MathChallenge {
   target: number;
   numbers: number[];
 }
 
-/** One player's submitted expression for the math round, scored at reveal time. */
+/** One player's submitted expression for the My Number round, scored at reveal time. */
 export interface MathSubmission {
   playerId: string;
   playerName: string;
@@ -320,7 +320,7 @@ export interface ClientToServerEvents {
     callback: (response: { ok: true } | { ok: false; error: string }) => void
   ) => void;
 
-  /** Math round: submit (and lock in) an expression combining the given numbers. Invalid expressions are rejected, not locked in. */
+  /** My Number round: submit (and lock in) an expression combining the given numbers. Invalid expressions are rejected, not locked in. */
   "player:submit-math": (
     payload: { code: string; expression: string },
     callback: (
@@ -367,9 +367,9 @@ export interface ServerToClientEvents {
   "matching:board": (payload: MatchingBoardPayload) => void;
   /** Matching round: the correct pair + everyone's guesses have been scored. */
   "matching:revealed": (payload: MatchingRevealPayload) => void;
-  /** Math round: the target + 6 numbers have been generated and the round is now active. */
+  /** My Number round: the target + 6 numbers have been generated and the round is now active. */
   "math:started": (payload: MathChallenge) => void;
-  /** Math round: submitted expressions have been scored. */
+  /** My Number round: submitted expressions have been scored. */
   "math:revealed": (payload: MathRevealPayload) => void;
   /** The current round's questions have all been played (or the host ended it early). */
   "game:round-ended": (payload: { players: Player[] }) => void;

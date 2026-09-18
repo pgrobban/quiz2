@@ -22,7 +22,7 @@ interface LetterRevealProps {
   /**
    * Per-tile override for scramble candidates (parallel array to `letters`).
    * Useful when different positions represent different "kinds" of value
-   * (e.g. the math round's single-digit slots vs. its medium/large-number
+   * (e.g. the 'My Number' round's single-digit slots vs. its medium/large-number
    * slots) - each tile scrambles through its own plausible values instead
    * of the shared `scrambleCharset`. Falls back to `scrambleCharset` for
    * any position where no override is given.
