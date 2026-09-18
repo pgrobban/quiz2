@@ -31,7 +31,16 @@ const revealsInProgress = new Set<string>();
 // override via CLIENT_ORIGIN for production deployments.
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
 const isLocalhostOrigin = (origin: string) =>
-  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
+// Tunnel tools (localtunnel, ngrok) hand out a random subdomain each run,
+// so there's no fixed origin to allow-list. Since this is a local dev tool
+// (not a real multi-tenant public deployment), it's fine to trust these
+// well-known tunnel domains rather than requiring CLIENT_ORIGIN to be set
+// (and updated) every time a new tunnel URL is generated.
+const isTunnelOrigin = (origin: string) =>
+  /^https:\/\/[\w-]+\.(loca\.lt|ngrok-free\.app|ngrok\.io|ngrok\.app|trycloudflare\.com)$/.test(
+    origin
+  );
 
 const corsOriginCheck = (
   origin: string | undefined,
@@ -39,7 +48,7 @@ const corsOriginCheck = (
 ) => {
   if (!origin) return callback(null, true); // same-origin / curl / server-to-server
   if (CLIENT_ORIGIN) return callback(null, origin === CLIENT_ORIGIN);
-  if (isLocalhostOrigin(origin)) return callback(null, true);
+  if (isLocalhostOrigin(origin) || isTunnelOrigin(origin)) return callback(null, true);
   callback(new Error(`Origin ${origin} not allowed by CORS`));
 };
 
