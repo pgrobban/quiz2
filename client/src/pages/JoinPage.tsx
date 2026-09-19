@@ -619,7 +619,10 @@ export default function JoinPage() {
                       }
                       size="large"
                       disabled={selectedIndex !== null || timeExpired}
-                      onClick={() => handleAnswer(index)}
+                      onClick={(e) => {
+                        e.currentTarget.blur();
+                        handleAnswer(index);
+                      }}
                       endIcon={
                         isRevealedCorrect ? (
                           <CheckCircleIcon />

@@ -593,7 +593,8 @@ export default function HostPage() {
               availableQuestions &&
               room.round !== "matching" &&
               room.round !== "letters" &&
-              room.round !== "math" && (
+              room.round !== "math" &&
+              room.round !== "associations" && (
                 <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
                   <Stack
                     direction="row"
