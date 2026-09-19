@@ -9,9 +9,14 @@ import type {
   ServerToClientEvents,
   SocketData,
 } from "../../shared/types";
-import { LETTERS_REVEAL_ANIMATION_MS, MATH_REVEAL_ANIMATION_MS, RoomManager } from "./roomManager";
+import {
+  LETTERS_REVEAL_ANIMATION_MS,
+  MATH_REVEAL_ANIMATION_MS,
+  RoomManager,
+} from "./roomManager";
 
 const PORT = Number(process.env.PORT) || 4000;
+const HOST = process.env.HOST || "0.0.0.0";
 
 /**
  * Rounds where players lock in their answer once (letters/matching/math)
@@ -30,8 +35,10 @@ const revealsInProgress = new Set<string>();
 // one origin, allow any localhost/127.0.0.1 port, plus an optional explicit
 // override via CLIENT_ORIGIN for production deployments.
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
-const isLocalhostOrigin = (origin: string) =>
-  /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
+const isLocalNetworkOrigin = (origin: string) =>
+  /^https?:\/\/((localhost|127\.0\.0\.1|0\.0\.0\.0)|(?:10(?:\.\d+){3}|192\.168(?:\.\d+){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d+){2}))(:\d+)?$/.test(
+    origin,
+  );
 // Tunnel tools (localtunnel, ngrok) hand out a random subdomain each run,
 // so there's no fixed origin to allow-list. Since this is a local dev tool
 // (not a real multi-tenant public deployment), it's fine to trust these
@@ -39,16 +46,17 @@ const isLocalhostOrigin = (origin: string) =>
 // (and updated) every time a new tunnel URL is generated.
 const isTunnelOrigin = (origin: string) =>
   /^https:\/\/[\w-]+\.(loca\.lt|ngrok-free\.app|ngrok\.io|ngrok\.app|trycloudflare\.com)$/.test(
-    origin
+    origin,
   );
 
 const corsOriginCheck = (
   origin: string | undefined,
-  callback: (err: Error | null, allow?: boolean) => void
+  callback: (err: Error | null, allow?: boolean) => void,
 ) => {
   if (!origin) return callback(null, true); // same-origin / curl / server-to-server
   if (CLIENT_ORIGIN) return callback(null, origin === CLIENT_ORIGIN);
-  if (isLocalhostOrigin(origin) || isTunnelOrigin(origin)) return callback(null, true);
+  if (isLocalNetworkOrigin(origin) || isTunnelOrigin(origin))
+    return callback(null, true);
   callback(new Error(`Origin ${origin} not allowed by CORS`));
 };
 
@@ -135,11 +143,17 @@ io.on("connection", (socket) => {
     const room = rooms.getRoom(code);
 
     if (!room) {
-      callback({ ok: false, error: "Room not found. Check the code and try again." });
+      callback({
+        ok: false,
+        error: "Room not found. Check the code and try again.",
+      });
       return;
     }
     if (room.phase !== "lobby") {
-      callback({ ok: false, error: "A round is currently in progress. Try again shortly." });
+      callback({
+        ok: false,
+        error: "A round is currently in progress. Try again shortly.",
+      });
       return;
     }
     if (room.players.length >= MAX_PLAYERS_PER_ROOM) {
@@ -154,7 +168,10 @@ io.on("connection", (socket) => {
       return;
     }
     if (rooms.isNameTaken(code, trimmedName)) {
-      callback({ ok: false, error: "That name is already taken in this room." });
+      callback({
+        ok: false,
+        error: "That name is already taken in this room.",
+      });
       return;
     }
 
@@ -179,7 +196,10 @@ io.on("connection", (socket) => {
   socket.on("spectator:join-room", ({ code }, callback) => {
     const room = rooms.getRoom(code);
     if (!room) {
-      callback({ ok: false, error: "Room not found. Check the code and try again." });
+      callback({
+        ok: false,
+        error: "Room not found. Check the code and try again.",
+      });
       return;
     }
 
@@ -252,7 +272,11 @@ io.on("connection", (socket) => {
     const room = rooms.getRoom(code);
     if (!room || room.hostId !== socket.id) return;
 
-    if (room.round === "letters" || room.round === "matching" || room.round === "math") {
+    if (
+      room.round === "letters" ||
+      room.round === "matching" ||
+      room.round === "math"
+    ) {
       if (room.phase !== "question" || revealsInProgress.has(code)) return;
       revealsInProgress.add(code);
       // Tell clients time's up right now, so anyone relying on their own
@@ -452,20 +476,23 @@ io.on("connection", (socket) => {
     callback(rooms.peekAssociationsAnswer(code, target));
   });
 
-  socket.on("host:judge-associations-guess", ({ code, target, correct }, callback) => {
-    const room = rooms.getRoom(code);
-    if (!room || room.hostId !== socket.id) {
-      callback({ ok: false, error: "Not authorized." });
-      return;
-    }
+  socket.on(
+    "host:judge-associations-guess",
+    ({ code, target, correct }, callback) => {
+      const room = rooms.getRoom(code);
+      if (!room || room.hostId !== socket.id) {
+        callback({ ok: false, error: "Not authorized." });
+        return;
+      }
 
-    const result = rooms.judgeAssociationsGuess(code, target, correct);
-    callback(result);
-    if (result.ok) {
-      const updatedRoom = rooms.getRoom(code);
-      if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
-    }
-  });
+      const result = rooms.judgeAssociationsGuess(code, target, correct);
+      callback(result);
+      if (result.ok) {
+        const updatedRoom = rooms.getRoom(code);
+        if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
+      }
+    },
+  );
 
   socket.on("player:leave-room", ({ code }) => {
     handlePlayerLeave(socket.id, code);
@@ -491,6 +518,7 @@ io.on("connection", (socket) => {
   }
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`Quiz game server listening on http://localhost:${PORT}`);
+httpServer.listen(PORT, HOST, () => {
+  console.log(`Quiz game server listening on http://0.0.0.0:${PORT}`);
+  console.log(`LAN access example: http://192.168.1.50:${PORT}`);
 });

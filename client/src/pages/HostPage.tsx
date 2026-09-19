@@ -62,10 +62,10 @@ type ConnectionState = "connecting" | "ready" | "error";
 
 const ROUND_OPTIONS: { id: GameRound; label: string }[] = [
   { id: "quiz", label: "Should I know this?" },
-  { id: "letters", label: "Letters Round" },
-  { id: "matching", label: "Matching Round" },
+  { id: "letters", label: "Letters" },
+  { id: "matching", label: "Matching" },
   { id: "math", label: "My Number" },
-  { id: "associations", label: "Associations Round" },
+  { id: "associations", label: "Associations" },
 ];
 
 export default function HostPage() {
@@ -85,23 +85,29 @@ export default function HostPage() {
   } | null>(null);
 
   // Matching round state.
-  const [activeMatchingBoard, setActiveMatchingBoard] = useState<MatchingBoard | null>(null);
+  const [activeMatchingBoard, setActiveMatchingBoard] =
+    useState<MatchingBoard | null>(null);
   const [matchingRevealed, setMatchingRevealed] = useState<{
     correctPairs: { leftId: string; rightId: string }[];
     results: MatchingPlayerResult[];
   } | null>(null);
 
   // My Number round state.
-  const [activeMathChallenge, setActiveMathChallenge] = useState<MathChallenge | null>(null);
+  const [activeMathChallenge, setActiveMathChallenge] =
+    useState<MathChallenge | null>(null);
   const [targetRevealed, setTargetRevealed] = useState(false);
   const targetScrambleCandidates = useMemo(
     () => generateTargetScrambleCandidates(),
-    [activeMathChallenge?.target]
+    [activeMathChallenge?.target],
   );
   const [mathRevealed, setMathRevealed] = useState<{
     target: number;
     submissions: MathSubmission[];
-    closestSolution: { value: number; expression: string; distance: number } | null;
+    closestSolution: {
+      value: number;
+      expression: string;
+      distance: number;
+    } | null;
   } | null>(null);
 
   // Round/question selection (host-only, not part of shared room state).
@@ -112,13 +118,13 @@ export default function HostPage() {
   const [availableMatchingBoards, setAvailableMatchingBoards] = useState<
     MatchingBoardBankItem[] | null
   >(null);
-  const [selectedMatchingBoardIds, setSelectedMatchingBoardIds] = useState<string[]>([]);
-  const [availableAssociationsBoards, setAvailableAssociationsBoards] = useState<
-    AssociationsBoardBankItem[] | null
-  >(null);
-  const [selectedAssociationsBoardIds, setSelectedAssociationsBoardIds] = useState<
+  const [selectedMatchingBoardIds, setSelectedMatchingBoardIds] = useState<
     string[]
   >([]);
+  const [availableAssociationsBoards, setAvailableAssociationsBoards] =
+    useState<AssociationsBoardBankItem[] | null>(null);
+  const [selectedAssociationsBoardIds, setSelectedAssociationsBoardIds] =
+    useState<string[]>([]);
   /** How many back-to-back rounds to play for procedurally-generated rounds (letters/math). */
   const [roundCount, setRoundCount] = useState(3);
 
@@ -189,7 +195,11 @@ export default function HostPage() {
     function onMathRevealed(payload: {
       target: number;
       submissions: MathSubmission[];
-      closestSolution: { value: number; expression: string; distance: number } | null;
+      closestSolution: {
+        value: number;
+        expression: string;
+        distance: number;
+      } | null;
     }) {
       setMathRevealed(payload);
     }
@@ -256,10 +266,12 @@ export default function HostPage() {
         setAvailableQuestions(response.availableQuestions);
         setSelectedQuestionIds(response.availableQuestions.map((q) => q.id));
         setAvailableMatchingBoards(response.availableMatchingBoards);
-        setSelectedMatchingBoardIds(response.availableMatchingBoards.map((b) => b.id));
+        setSelectedMatchingBoardIds(
+          response.availableMatchingBoards.map((b) => b.id),
+        );
         setAvailableAssociationsBoards(response.availableAssociationsBoards);
         setSelectedAssociationsBoardIds(
-          response.availableAssociationsBoards.map((b) => b.id)
+          response.availableAssociationsBoards.map((b) => b.id),
         );
       } else {
         setErrorMessage(response.error);
@@ -269,24 +281,25 @@ export default function HostPage() {
 
   const toggleQuestion = (id: string) => {
     setSelectedQuestionIds((prev) =>
-      prev.includes(id) ? prev.filter((qId) => qId !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((qId) => qId !== id) : [...prev, id],
     );
   };
 
   const toggleMatchingBoard = (id: string) => {
     setSelectedMatchingBoardIds((prev) =>
-      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id],
     );
   };
 
   const toggleAssociationsBoard = (id: string) => {
     setSelectedAssociationsBoardIds((prev) =>
-      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id],
     );
   };
 
   const handleSelectAllQuestions = () => {
-    if (availableQuestions) setSelectedQuestionIds(availableQuestions.map((q) => q.id));
+    if (availableQuestions)
+      setSelectedQuestionIds(availableQuestions.map((q) => q.id));
   };
   const handleDeselectAllQuestions = () => setSelectedQuestionIds([]);
 
@@ -299,10 +312,13 @@ export default function HostPage() {
 
   const handleSelectAllAssociationsBoards = () => {
     if (availableAssociationsBoards) {
-      setSelectedAssociationsBoardIds(availableAssociationsBoards.map((b) => b.id));
+      setSelectedAssociationsBoardIds(
+        availableAssociationsBoards.map((b) => b.id),
+      );
     }
   };
-  const handleDeselectAllAssociationsBoards = () => setSelectedAssociationsBoardIds([]);
+  const handleDeselectAllAssociationsBoards = () =>
+    setSelectedAssociationsBoardIds([]);
 
   const handleConfirmRoundCount = () => {
     if (!room) return;
@@ -316,7 +332,7 @@ export default function HostPage() {
         } else {
           setErrorMessage(response.error);
         }
-      }
+      },
     );
   };
 
@@ -337,7 +353,7 @@ export default function HostPage() {
         } else {
           setErrorMessage(response.error);
         }
-      }
+      },
     );
   };
 
@@ -350,7 +366,8 @@ export default function HostPage() {
     setSelectedAssociationsBoardIds([]);
     setPendingGuess(null);
     setRoundCount(3);
-    if (room) setRoom({ ...room, round: null, roundInfo: null, totalQuestions: 0 });
+    if (room)
+      setRoom({ ...room, round: null, roundInfo: null, totalQuestions: 0 });
   };
 
   const handleShowTutorial = () => {
@@ -392,7 +409,7 @@ export default function HostPage() {
       { code: room.code, field },
       (response) => {
         if (!response.ok) setErrorMessage(response.error);
-      }
+      },
     );
   };
 
@@ -407,7 +424,7 @@ export default function HostPage() {
         } else {
           setErrorMessage(response.error);
         }
-      }
+      },
     );
   };
 
@@ -422,7 +439,7 @@ export default function HostPage() {
         } else {
           setErrorMessage(response.error);
         }
-      }
+      },
     );
   };
 
@@ -452,7 +469,10 @@ export default function HostPage() {
     !!room && room.currentQuestionIndex >= room.totalQuestions - 1;
 
   const roundChosenButNoQuestions =
-    !!room && room.phase === "lobby" && !!room.round && room.totalQuestions === 0;
+    !!room &&
+    room.phase === "lobby" &&
+    !!room.round &&
+    room.totalQuestions === 0;
   const readyToPlay =
     !!room && room.phase === "lobby" && !!room.round && room.totalQuestions > 0;
 
@@ -553,7 +573,9 @@ export default function HostPage() {
                   {ROUND_OPTIONS.map((option) => (
                     <Grid item xs={6} key={option.id}>
                       <Card variant="outlined">
-                        <CardActionArea onClick={() => handleSelectRound(option.id)}>
+                        <CardActionArea
+                          onClick={() => handleSelectRound(option.id)}
+                        >
                           <CardContent sx={{ textAlign: "center", py: 3 }}>
                             <Typography variant="subtitle1">
                               {option.label}
@@ -623,55 +645,65 @@ export default function HostPage() {
                 </Paper>
               )}
 
-            {roundChosenButNoQuestions && availableMatchingBoards && room.round === "matching" && (
-              <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{ mb: 1 }}
-                >
-                  <Typography variant="h6">Pick Boards</Typography>
-                  <Button size="small" onClick={handleChangeRound}>
-                    Change Round
+            {roundChosenButNoQuestions &&
+              availableMatchingBoards &&
+              room.round === "matching" && (
+                <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 1 }}
+                  >
+                    <Typography variant="h6">Pick Boards</Typography>
+                    <Button size="small" onClick={handleChangeRound}>
+                      Change Round
+                    </Button>
+                  </Stack>
+                  <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                    <Button
+                      size="small"
+                      onClick={handleSelectAllMatchingBoards}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={handleDeselectAllMatchingBoards}
+                    >
+                      Deselect All
+                    </Button>
+                  </Stack>
+                  <List dense>
+                    {availableMatchingBoards.map((board) => (
+                      <ListItem key={board.id} disablePadding>
+                        <FormControlLabel
+                          sx={{ px: 1, width: "100%" }}
+                          control={
+                            <Checkbox
+                              checked={selectedMatchingBoardIds.includes(
+                                board.id,
+                              )}
+                              onChange={() => toggleMatchingBoard(board.id)}
+                            />
+                          }
+                          label={`${board.title} (${board.pairs.length} pairs)`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={selectedMatchingBoardIds.length === 0}
+                    onClick={handleConfirmQuestions}
+                    sx={{ mt: 1 }}
+                  >
+                    Confirm {selectedMatchingBoardIds.length} Board
+                    {selectedMatchingBoardIds.length === 1 ? "" : "s"}
                   </Button>
-                </Stack>
-                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                  <Button size="small" onClick={handleSelectAllMatchingBoards}>
-                    Select All
-                  </Button>
-                  <Button size="small" onClick={handleDeselectAllMatchingBoards}>
-                    Deselect All
-                  </Button>
-                </Stack>
-                <List dense>
-                  {availableMatchingBoards.map((board) => (
-                    <ListItem key={board.id} disablePadding>
-                      <FormControlLabel
-                        sx={{ px: 1, width: "100%" }}
-                        control={
-                          <Checkbox
-                            checked={selectedMatchingBoardIds.includes(board.id)}
-                            onChange={() => toggleMatchingBoard(board.id)}
-                          />
-                        }
-                        label={`${board.title} (${board.pairs.length} pairs)`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  disabled={selectedMatchingBoardIds.length === 0}
-                  onClick={handleConfirmQuestions}
-                  sx={{ mt: 1 }}
-                >
-                  Confirm {selectedMatchingBoardIds.length} Board
-                  {selectedMatchingBoardIds.length === 1 ? "" : "s"}
-                </Button>
-              </Paper>
-            )}
+                </Paper>
+              )}
 
             {roundChosenButNoQuestions &&
               availableAssociationsBoards &&
@@ -694,10 +726,16 @@ export default function HostPage() {
                     spectate screens.
                   </Typography>
                   <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                    <Button size="small" onClick={handleSelectAllAssociationsBoards}>
+                    <Button
+                      size="small"
+                      onClick={handleSelectAllAssociationsBoards}
+                    >
                       Select All
                     </Button>
-                    <Button size="small" onClick={handleDeselectAllAssociationsBoards}>
+                    <Button
+                      size="small"
+                      onClick={handleDeselectAllAssociationsBoards}
+                    >
                       Deselect All
                     </Button>
                   </Stack>
@@ -708,7 +746,9 @@ export default function HostPage() {
                           sx={{ px: 1, width: "100%" }}
                           control={
                             <Checkbox
-                              checked={selectedAssociationsBoardIds.includes(board.id)}
+                              checked={selectedAssociationsBoardIds.includes(
+                                board.id,
+                              )}
                               onChange={() => toggleAssociationsBoard(board.id)}
                             />
                           }
@@ -750,7 +790,13 @@ export default function HostPage() {
                     Play this many rounds back-to-back before returning to the
                     round picker (the tutorial is only shown once).
                   </Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    flexWrap="wrap"
+                    useFlexGap
+                    sx={{ mb: 2 }}
+                  >
                     {[1, 2, 3, 5, 10].map((n) => (
                       <Button
                         key={n}
@@ -762,14 +808,21 @@ export default function HostPage() {
                       </Button>
                     ))}
                   </Stack>
-                  <Button variant="contained" fullWidth onClick={handleConfirmRoundCount}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={handleConfirmRoundCount}
+                  >
                     Confirm {roundCount} Round{roundCount === 1 ? "" : "s"}
                   </Button>
                 </Paper>
               )}
 
             {readyToPlay && (
-              <Paper elevation={1} sx={{ p: 2, borderRadius: 3, textAlign: "center" }}>
+              <Paper
+                elevation={1}
+                sx={{ p: 2, borderRadius: 3, textAlign: "center" }}
+              >
                 <Typography variant="h6">{room.roundInfo?.title}</Typography>
                 <Typography color="text.secondary" sx={{ mb: 2 }}>
                   {room.totalQuestions}{" "}
@@ -796,7 +849,10 @@ export default function HostPage() {
             )}
 
             {room.phase === "introduction" && room.roundInfo && (
-              <Paper elevation={1} sx={{ p: 3, borderRadius: 3, textAlign: "center" }}>
+              <Paper
+                elevation={1}
+                sx={{ p: 3, borderRadius: 3, textAlign: "center" }}
+              >
                 <Typography variant="h5">{room.roundInfo.title}</Typography>
                 <Typography color="text.secondary" sx={{ mt: 1, mb: 2 }}>
                   {room.roundInfo.description}
@@ -862,7 +918,10 @@ export default function HostPage() {
                   </Stack>
                   {room.phaseDeadline !== null && (
                     <Box sx={{ mb: 2 }}>
-                      <CountdownBar deadline={room.phaseDeadline} totalSeconds={15} />
+                      <CountdownBar
+                        deadline={room.phaseDeadline}
+                        totalSeconds={15}
+                      />
                     </Box>
                   )}
                   <Typography variant="h6" sx={{ mb: 2 }}>
@@ -906,7 +965,7 @@ export default function HostPage() {
                     sx={{ mb: 2 }}
                   >
                     <Typography variant="overline" color="text.secondary">
-                      Letters Round · Round {room.currentQuestionIndex + 1} of{" "}
+                      Letters · Round {room.currentQuestionIndex + 1} of{" "}
                       {room.totalQuestions}
                     </Typography>
                     <Chip
@@ -917,7 +976,10 @@ export default function HostPage() {
 
                   {room.phaseDeadline !== null && (
                     <Box sx={{ mb: 2 }}>
-                      <CountdownBar deadline={room.phaseDeadline} totalSeconds={60} />
+                      <CountdownBar
+                        deadline={room.phaseDeadline}
+                        totalSeconds={60}
+                      />
                     </Box>
                   )}
 
@@ -954,9 +1016,18 @@ export default function HostPage() {
                       <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
                         Best Possible Words
                       </Typography>
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
                         {lettersRevealed.topWords.map((word) => (
-                          <Chip key={word} label={word.toUpperCase()} color="success" />
+                          <Chip
+                            key={word}
+                            label={word.toUpperCase()}
+                            color="success"
+                          />
                         ))}
                       </Stack>
                     </>
@@ -975,7 +1046,7 @@ export default function HostPage() {
                     sx={{ mb: 2 }}
                   >
                     <Typography variant="overline" color="text.secondary">
-                      Matching Round · Board {room.currentQuestionIndex + 1} of{" "}
+                      Matching · Board {room.currentQuestionIndex + 1} of{" "}
                       {room.totalQuestions}
                     </Typography>
                     <Chip
@@ -990,7 +1061,10 @@ export default function HostPage() {
 
                   {room.phaseDeadline !== null && (
                     <Box sx={{ mb: 2 }}>
-                      <CountdownBar deadline={room.phaseDeadline} totalSeconds={90} />
+                      <CountdownBar
+                        deadline={room.phaseDeadline}
+                        totalSeconds={90}
+                      />
                     </Box>
                   )}
 
@@ -1001,7 +1075,11 @@ export default function HostPage() {
                           <Paper
                             key={item.id}
                             variant="outlined"
-                            sx={{ p: 1, textAlign: "center", fontSize: "0.9rem" }}
+                            sx={{
+                              p: 1,
+                              textAlign: "center",
+                              fontSize: "0.9rem",
+                            }}
                           >
                             {item.text}
                           </Paper>
@@ -1014,7 +1092,11 @@ export default function HostPage() {
                           <Paper
                             key={item.id}
                             variant="outlined"
-                            sx={{ p: 1, textAlign: "center", fontSize: "0.9rem" }}
+                            sx={{
+                              p: 1,
+                              textAlign: "center",
+                              fontSize: "0.9rem",
+                            }}
                           >
                             {item.text}
                           </Paper>
@@ -1031,13 +1113,17 @@ export default function HostPage() {
                       <Stack spacing={0.5}>
                         {matchingRevealed.correctPairs.map((pair) => {
                           const leftText = activeMatchingBoard.left.find(
-                            (i) => i.id === pair.leftId
+                            (i) => i.id === pair.leftId,
                           )?.text;
                           const rightText = activeMatchingBoard.right.find(
-                            (i) => i.id === pair.rightId
+                            (i) => i.id === pair.rightId,
                           )?.text;
                           return (
-                            <Typography key={pair.leftId} variant="body2" color="success.main">
+                            <Typography
+                              key={pair.leftId}
+                              variant="body2"
+                              color="success.main"
+                            >
                               {leftText} ↔ {rightText}
                             </Typography>
                           );
@@ -1084,14 +1170,23 @@ export default function HostPage() {
 
                   {room.phaseDeadline !== null && (
                     <Box sx={{ mb: 2 }}>
-                      <CountdownBar deadline={room.phaseDeadline} totalSeconds={90} />
+                      <CountdownBar
+                        deadline={room.phaseDeadline}
+                        totalSeconds={90}
+                      />
                     </Box>
                   )}
 
-                  <Typography variant="body2" color="text.secondary" textAlign="center">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    textAlign="center"
+                  >
                     Target
                   </Typography>
-                  <Box sx={{ py: 1, display: "flex", justifyContent: "center" }}>
+                  <Box
+                    sx={{ py: 1, display: "flex", justifyContent: "center" }}
+                  >
                     <LetterReveal
                       letters={[String(activeMathChallenge.target)]}
                       scrambleCandidatesPerTile={[targetScrambleCandidates]}
@@ -1115,7 +1210,8 @@ export default function HostPage() {
                     <>
                       {mathRevealed.closestSolution && (
                         <Alert severity="info" sx={{ mt: 2 }}>
-                          Best possible: {mathRevealed.closestSolution.expression} ={" "}
+                          Best possible:{" "}
+                          {mathRevealed.closestSolution.expression} ={" "}
                           {mathRevealed.closestSolution.value}
                           {mathRevealed.closestSolution.distance > 0
                             ? ` (${mathRevealed.closestSolution.distance} away from target)`
@@ -1135,8 +1231,9 @@ export default function HostPage() {
                           {mathRevealed.submissions.map((sub) => (
                             <ListItem key={sub.playerId}>
                               <ListItemText
-                                primary={`${sub.playerName}: ${sub.expression} ${sub.value !== null ? `= ${sub.value}` : ""
-                                  }`}
+                                primary={`${sub.playerName}: ${sub.expression} ${
+                                  sub.value !== null ? `= ${sub.value}` : ""
+                                }`}
                                 secondary={
                                   sub.value !== null
                                     ? `${sub.distance} away from target - +${sub.points} pts`
@@ -1174,7 +1271,7 @@ export default function HostPage() {
                       sx={{ mb: 2 }}
                     >
                       {room.associationsTurn.finalists.find(
-                        (p) => p.id === room.associationsTurn!.activePlayerId
+                        (p) => p.id === room.associationsTurn!.activePlayerId,
                       )?.name ?? "?"}
                       's turn -{" "}
                       {room.associationsTurn.mode === "guess-only"
@@ -1193,7 +1290,9 @@ export default function HostPage() {
                             bgcolor: col.solved
                               ? "rgba(74, 222, 128, 0.12)"
                               : undefined,
-                            borderColor: col.solved ? "success.main" : undefined,
+                            borderColor: col.solved
+                              ? "success.main"
+                              : undefined,
                           }}
                         >
                           <Typography
@@ -1215,7 +1314,9 @@ export default function HostPage() {
                                   !room.associationsTurn ||
                                   room.associationsTurn.mode !== "open-or-guess"
                                 }
-                                onClick={() => handleOpenAssociationsField(clue.field)}
+                                onClick={() =>
+                                  handleOpenAssociationsField(clue.field)
+                                }
                                 sx={{
                                   justifyContent: "flex-start",
                                   textTransform: "none",
@@ -1242,7 +1343,10 @@ export default function HostPage() {
                                 fullWidth
                                 sx={{ mt: 1 }}
                                 onClick={() =>
-                                  handleStageGuess({ type: "column", column: col.label })
+                                  handleStageGuess({
+                                    type: "column",
+                                    column: col.label,
+                                  })
                                 }
                               >
                                 Guess Column {col.label}
@@ -1320,7 +1424,9 @@ export default function HostPage() {
                         >
                           Incorrect
                         </Button>
-                        <Button onClick={() => setPendingGuess(null)}>Cancel</Button>
+                        <Button onClick={() => setPendingGuess(null)}>
+                          Cancel
+                        </Button>
                       </Stack>
                     </Paper>
                   )}
@@ -1328,7 +1434,10 @@ export default function HostPage() {
               )}
 
             {room.phase === "finished" && (
-              <Paper elevation={1} sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
+              <Paper
+                elevation={1}
+                sx={{ p: 3, textAlign: "center", borderRadius: 3 }}
+              >
                 <Typography variant="h5">Game Over!</Typography>
                 <Typography color="text.secondary" sx={{ mt: 1 }}>
                   Final scores below
@@ -1404,12 +1513,15 @@ export default function HostPage() {
         )}
       </Box>
 
-      <Dialog open={showLeaveConfirm} onClose={() => setShowLeaveConfirm(false)}>
+      <Dialog
+        open={showLeaveConfirm}
+        onClose={() => setShowLeaveConfirm(false)}
+      >
         <DialogTitle>Leave the game?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            A game is currently in progress. If you leave now, the room will
-            be closed for everyone. Are you sure you want to leave?
+            A game is currently in progress. If you leave now, the room will be
+            closed for everyone. Are you sure you want to leave?
           </DialogContentText>
         </DialogContent>
         <DialogActions>

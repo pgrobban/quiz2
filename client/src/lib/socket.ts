@@ -12,8 +12,11 @@ import type {
 // instead of needing a second tunnel + CORS setup for the server's port.
 const SERVER_URL =
   import.meta.env.VITE_SERVER_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:4000");
+  (typeof window !== "undefined"
+    ? window.location.origin
+    : "http://0.0.0.0:4000");
 
+console.log("*** SERVER", SERVER_URL);
 /**
  * Single shared socket instance for the whole app. Connection is initiated
  * lazily so the app can render before the handshake completes.
@@ -22,5 +25,5 @@ export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
   SERVER_URL,
   {
     autoConnect: false,
-  }
+  },
 );

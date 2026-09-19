@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: "0.0.0.0",
     port: 5173,
     // Lets the dev server accept requests coming through a tunnel (e.g.
     // localtunnel/ngrok) whose hostname isn't localhost. Fine for a local
@@ -20,5 +21,8 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    host: "0.0.0.0",
+    port: 4173,
+  },
 });
-
