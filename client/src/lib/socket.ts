@@ -16,7 +16,6 @@ const SERVER_URL =
     ? window.location.origin
     : "http://0.0.0.0:4000");
 
-console.log("*** SERVER", SERVER_URL);
 /**
  * Single shared socket instance for the whole app. Connection is initiated
  * lazily so the app can render before the handshake completes.
@@ -25,5 +24,15 @@ export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
   SERVER_URL,
   {
     autoConnect: false,
+    // Free tunnel services (localtunnel, etc.) and some mobile carrier
+    // networks are known to flakily half-support WebSocket upgrades - the
+    // initial polling handshake succeeds, but the upgrade attempt hangs or
+    // silently drops instead of cleanly falling back. Since this app only
+    // needs to push small, infrequent updates (scores, questions), staying
+    // on plain HTTP long-polling is a totally fine trade-off for much more
+    // reliable connections over sketchy networks/tunnels.
+    transports: ["polling"],
+    upgrade: false,
   },
 );
+

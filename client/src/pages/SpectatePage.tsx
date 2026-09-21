@@ -188,12 +188,31 @@ export default function SpectatePage() {
     setErrorMessage(null);
     setViewState("joining");
 
+    let settled = false;
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      socket.off("connect", emitJoin);
+      socket.off("connect_error", onConnectError);
+    };
+    const fail = (message: string) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      setErrorMessage(message);
+      setViewState("form");
+      socket.disconnect();
+    };
+
     const emitJoin = () => {
       socket.emit("spectator:join-room", { code: trimmedCode }, (response) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
         if (response.ok) {
           setRoom(response.room);
           setQuestion(response.question);
           setCorrectIndex(response.correctIndex);
+          setErrorMessage(null);
           setViewState("watching");
         } else {
           setErrorMessage(response.error);
@@ -203,10 +222,28 @@ export default function SpectatePage() {
       });
     };
 
+    // Socket.IO retries automatically in the background (e.g. falling back
+    // from websocket to polling on flaky mobile networks), so a single
+    // connect_error isn't necessarily fatal - just surface it as a status
+    // update, and only give up for real once the overall timeout below
+    // elapses with no success at all.
+    const onConnectError = () => {
+      setErrorMessage("Having trouble connecting - still retrying...");
+    };
+
+    // Guard against hanging forever on "Connecting to room..." if the
+    // connection (or the server's response) never arrives at all - e.g.
+    // flaky mobile network conditions where neither "connect" nor a
+    // response ever comes.
+    const timeoutId = setTimeout(() => {
+      fail("Timed out trying to reach the game server. Please try again.");
+    }, 15000);
+
     if (socket.connected) {
       emitJoin();
     } else {
       socket.once("connect", emitJoin);
+      socket.on("connect_error", onConnectError);
       socket.connect();
     }
   };
@@ -279,6 +316,11 @@ export default function SpectatePage() {
           <Stack alignItems="center" spacing={2} sx={{ py: 12 }}>
             <CircularProgress />
             <Typography>Connecting to room...</Typography>
+            {errorMessage && (
+              <Typography color="warning.main" variant="body2" textAlign="center">
+                {errorMessage}
+              </Typography>
+            )}
           </Stack>
         )}
 

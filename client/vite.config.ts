@@ -1,6 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+// When tunneling (localtunnel/ngrok/etc), tell Vite the public hostname so
+// its injected HMR client connects back to *that* host over wss instead of
+// falling back to a hardcoded "localhost:<port>" URL, which means nothing
+// to a remote device. Left unset, Vite auto-detects everything correctly
+// for plain local dev. Set this before running `npm run dev:client`, e.g.:
+//   $env:TUNNEL_HOST="arqg.loca.lt"; npm run dev:client
+const TUNNEL_HOST = process.env.TUNNEL_HOST?.trim() || undefined;
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -20,9 +28,17 @@ export default defineConfig({
         ws: true,
       },
     },
+    ...(TUNNEL_HOST && {
+      hmr: {
+        host: TUNNEL_HOST,
+        protocol: "wss",
+        clientPort: 443,
+      },
+    }),
   },
   preview: {
     host: "0.0.0.0",
     port: 4173,
   },
 });
+

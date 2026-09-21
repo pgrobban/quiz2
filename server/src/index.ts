@@ -506,6 +506,15 @@ io.on("connection", (socket) => {
       io.to(code).emit("room:closed", { reason: "The host has disconnected." });
       rooms.closeRoom(code);
     } else if (!socket.data.isSpectator) {
+      const room = rooms.getRoom(code);
+      // During the associations round, non-finalist players (and even
+      // finalists between turns) aren't actively using their phones at all
+      // - they're just watching the host/spectate screens - so it's common
+      // for a phone to fall asleep and drop its socket connection. Don't
+      // punish that by removing them (and wiping their score) from the
+      // room; just let the stale connection go and leave their scoreboard
+      // entry as-is. An explicit "Leave Game" still removes them normally.
+      if (room?.round === "associations") return;
       handlePlayerLeave(socket.id, code);
     }
   });
