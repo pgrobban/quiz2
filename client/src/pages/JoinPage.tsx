@@ -147,6 +147,10 @@ export default function JoinPage() {
       setCorrectIndex(null);
       setTimeExpired(false);
       setViewState("question");
+      // Clear focus from whichever option button was last clicked/tapped -
+      // otherwise the same button position can visually look "focused"
+      // again once the next question's options render in its place.
+      (document.activeElement as HTMLElement | null)?.blur();
     }
 
     function onReveal(payload: { correctIndex: number }) {
@@ -545,13 +549,13 @@ export default function JoinPage() {
           <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
             <Stack spacing={3}>
               <Typography variant="h4" textAlign="center">
-                Join Game
+                Join game
               </Typography>
 
               {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
 
               <TextField
-                label="Room Code"
+                label="Room code"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 inputProps={{ maxLength: 4, inputMode: "numeric" }}
@@ -559,7 +563,7 @@ export default function JoinPage() {
                 fullWidth
               />
               <TextField
-                label="Your Name"
+                label="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 inputProps={{ maxLength: 24 }}
@@ -649,7 +653,17 @@ export default function JoinPage() {
 
                   return (
                     <Button
-                      key={index}
+                      // Keyed by question id (not just position) so React
+                      // mounts a brand-new DOM node per question instead of
+                      // patching the same button element in place. That
+                      // matters because this button becomes `disabled` the
+                      // instant it's tapped - on Chrome's mobile/touch
+                      // emulation, disabling an element mid-interaction can
+                      // leave its `:hover`/`:active` CSS state visually
+                      // "stuck" (blur() alone can't clear that, since it's
+                      // not actually about focus). A fresh DOM node has no
+                      // stale pseudo-class state to carry over.
+                      key={`${question.id}-${index}`}
                       variant={isSelected ? "contained" : "outlined"}
                       color={
                         isRevealedCorrect
@@ -671,7 +685,7 @@ export default function JoinPage() {
                           <CancelIcon />
                         ) : undefined
                       }
-                      sx={{ justifyContent: "space-between", py: 1.5 }}
+                      sx={{ justifyContent: "space-between", py: 1.5, textTransform: "none" }}
                     >
                       {option}
                     </Button>

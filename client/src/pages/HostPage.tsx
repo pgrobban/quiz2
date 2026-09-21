@@ -514,7 +514,7 @@ export default function HostPage() {
               sx={{ p: 3, textAlign: "center", borderRadius: 3 }}
             >
               <Typography variant="body2" color="text.secondary">
-                Room Code
+                Room code
               </Typography>
               <Typography
                 variant="h3"
@@ -1232,9 +1232,8 @@ export default function HostPage() {
                           {mathRevealed.submissions.map((sub) => (
                             <ListItem key={sub.playerId}>
                               <ListItemText
-                                primary={`${sub.playerName}: ${sub.expression} ${
-                                  sub.value !== null ? `= ${sub.value}` : ""
-                                }`}
+                                primary={`${sub.playerName}: ${sub.expression} ${sub.value !== null ? `= ${sub.value}` : ""
+                                  }`}
                                 secondary={
                                   sub.value !== null
                                     ? `${sub.distance} away from target - +${sub.points} pts`

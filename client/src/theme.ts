@@ -21,13 +21,7 @@ export const theme = createTheme({
     borderRadius: 12,
   },
   typography: {
-    fontFamily: `"Inter", "Roboto", "Helvetica", "Arial", sans-serif`,
-    h1: { fontFamily: `"Caacupe One", "Inter", sans-serif` },
-    h2: { fontFamily: `"Caacupe One", "Inter", sans-serif` },
-    h3: { fontFamily: `"Caacupe One", "Inter", sans-serif`, fontWeight: 400 },
-    h4: { fontFamily: `"Caacupe One", "Inter", sans-serif`, fontWeight: 400 },
-    h5: { fontFamily: `"Caacupe One", "Inter", sans-serif` },
-    h6: { fontFamily: `"Caacupe One", "Inter", sans-serif` },
+    fontFamily: `"Quattrocento Sans", "Roboto", "Helvetica", "Arial", sans-serif`,
   },
   components: {
     MuiPaper: {
