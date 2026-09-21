@@ -21,7 +21,7 @@ export const theme = createTheme({
     borderRadius: 12,
   },
   typography: {
-    fontFamily: `"Quattrocento Sans", "Roboto", "Helvetica", "Arial", sans-serif`,
+    fontFamily: `"Optima", "Roboto", "Helvetica", "Arial", sans-serif`,
   },
   components: {
     MuiPaper: {

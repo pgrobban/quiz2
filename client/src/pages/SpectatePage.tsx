@@ -297,7 +297,7 @@ export default function SpectatePage() {
                 {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
 
                 <TextField
-                  label="Room Code"
+                  label="Room code"
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                   inputProps={{ maxLength: 4, inputMode: "numeric" }}
