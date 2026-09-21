@@ -22,18 +22,18 @@ export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
     id: "quiz",
     title: "Should I know this?",
     description: "Classic multiple-choice trivia. 1p for each correct answer",
-    tutorial: { type: "image", url: "/tutorials/quiz.gif" },
+    tutorial: { type: "video", url: "/tutorials/quiz.mp4" },
   },
   letters: {
     id: "letters",
-    title: "Letters Round",
+    title: "Letters",
     description:
       "Make the longest word you can from the given letters. If your word is in the dictionary, you get 1p per letter, double points for long words (>= 8 letters).",
     tutorial: { type: "video", url: "/tutorials/letters.mp4" },
   },
   matching: {
     id: "matching",
-    title: "Matching Round",
+    title: "Matching",
     description:
       "Match pairs of related items before the timer runs out. 1p for each correct pair, +2 for a perfect board.",
     tutorial: { type: "video", url: "/tutorials/matching.mp4" },
@@ -47,7 +47,7 @@ export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
   },
   associations: {
     id: "associations",
-    title: "Associations Round",
+    title: "Associations",
     description:
       "Final round for the top 2 players: uncover clues on a 4-column wall to solve each column, then the overarching connection. 5 points for each column solved, 10 points for the final connection.",
     tutorial: { type: "video", url: "/tutorials/associations.mp4" },
