@@ -397,7 +397,7 @@ export default function SpectatePage() {
                     )}
                 </Stack>
 
-                {room.phase === "lobby" && (
+                {room.phase === "lobby" && !room.gameStarted && (
                   <Stack
                     flexGrow={1}
                     alignItems="center"
@@ -423,6 +423,19 @@ export default function SpectatePage() {
                     <Typography color="text.secondary" variant="body2">
                       Scan to join - or go to /join and enter code{" "}
                       <strong>{room.code}</strong>
+                    </Typography>
+                  </Stack>
+                )}
+
+                {room.phase === "lobby" && room.gameStarted && (
+                  <Stack
+                    flexGrow={1}
+                    alignItems="center"
+                    justifyContent="center"
+                    spacing={2}
+                  >
+                    <Typography variant="h4">
+                      Waiting for host to pick a round/questions
                     </Typography>
                   </Stack>
                 )}

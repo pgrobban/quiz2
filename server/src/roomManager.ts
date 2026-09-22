@@ -189,6 +189,7 @@ export class RoomManager {
         activeAssociationsBoard: null,
         associationsTurn: null,
         phaseDeadline: null,
+        gameStarted: false,
       },
       selectedQuestions: [],
       selectedMatchingBoards: [],
@@ -424,6 +425,7 @@ export class RoomManager {
       internal.public.activeMatchingBoard = board;
       internal.public.phaseDeadline = Date.now() + MATCHING_TIME_LIMIT_MS;
       internal.matchingGuesses.clear();
+      internal.public.gameStarted = true;
       return { ok: true, room: internal.public, matchingBoard: board };
     }
 
@@ -439,11 +441,13 @@ export class RoomManager {
       const finalists = sortedByScore.slice(0, 2);
       internal.associationsFinalists = finalists;
       this.beginAssociationsBoard(internal, 0, finalists[0].id);
+      internal.public.gameStarted = true;
       return { ok: true, room: internal.public };
     }
 
     internal.public.phaseDeadline = Date.now() + QUESTION_TIME_LIMIT_MS;
     internal.pendingAnswers.clear();
+    internal.public.gameStarted = true;
 
     return {
       ok: true,
@@ -471,6 +475,7 @@ export class RoomManager {
     // see activateLettersTimer(), scheduled by the caller.
     internal.public.phaseDeadline = null;
     internal.letterSubmissions.clear();
+    internal.public.gameStarted = true;
 
     return { ok: true, room: internal.public, letters };
   }
@@ -578,6 +583,7 @@ export class RoomManager {
     // see activateMathTimer(), scheduled by the caller.
     internal.public.phaseDeadline = null;
     internal.mathSubmissions.clear();
+    internal.public.gameStarted = true;
 
     return { ok: true, room: internal.public, challenge };
   }
@@ -1035,6 +1041,11 @@ export class RoomManager {
           }
         }
         if (activePlayer) activePlayer.score += POINTS_PER_ASSOCIATIONS_FINAL;
+        // The final solution being solved ends the round outright - no need
+        // for the host to separately press "Reveal Answer" afterwards.
+        internal.public.phase = "reveal";
+        internal.public.phaseDeadline = null;
+        return { ok: true };
       } else {
         const column = board.columns.find((c) => c.label === target.column);
         const bankColumn = boardItem.columns.find((c) => c.label === target.column);

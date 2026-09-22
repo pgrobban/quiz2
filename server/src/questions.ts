@@ -28,7 +28,7 @@ export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
     id: "letters",
     title: "Letters",
     description:
-      "Make the longest word you can from the given letters. If your word is in the dictionary, you get 1p per letter, double points for long words (>= 8 letters).",
+      "Make the longest word you can from the given letters. If your word is in the dictionary, you get 1p per letter, double points for long words (≥ 8 letters). Don't forget to lock in your answer!",
     tutorial: { type: "video", url: "/tutorials/letters.mp4" },
   },
   matching: {
@@ -42,7 +42,7 @@ export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
     id: "math",
     title: "My Number",
     description:
-      "Get as close as you can to the target number using the given numbers and basic arithmetic. 15p for an exact match, 10p if within 5, 5p if within 10.",
+      "Get as close as you can to the target number using the given numbers and basic arithmetic. 15p for an exact match, 10p if diff ≤ 5, 5p if diff ≤ 10. Don't forget to lock in your answer!",
     tutorial: { type: "video", url: "/tutorials/math.mp4" },
   },
   associations: {

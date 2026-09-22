@@ -65,6 +65,13 @@ export interface RoomState {
    * Null when there's no active countdown (lobby, introduction, reveal, finished).
    */
   phaseDeadline: number | null;
+  /**
+   * True once the first round of the game has actually started (not just
+   * selected). Players can only join while this is false - after that,
+   * even when back in the lobby picking the next round, joining is closed
+   * for the rest of the session.
+   */
+  gameStarted: boolean;
 }
 
 export interface RevealPayload {

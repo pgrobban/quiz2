@@ -156,6 +156,13 @@ io.on("connection", (socket) => {
       });
       return;
     }
+    if (room.gameStarted) {
+      callback({
+        ok: false,
+        error: "This game has already started - new players can't join mid-session.",
+      });
+      return;
+    }
     if (room.players.length >= MAX_PLAYERS_PER_ROOM) {
       callback({
         ok: false,
