@@ -1027,11 +1027,18 @@ export class RoomManager {
       if (target.type === "final") {
         board.finalSolved = true;
         board.finalSolution = boardItem.finalSolution;
+        board.finalSolvedBy = turn.activePlayerId;
         // Reveal every remaining column (clues + solution) now that the
-        // board is fully solved.
+        // board is fully solved, awarding column points for any that
+        // weren't already solved before this guess (the player effectively
+        // solved them too by getting the final without them being open).
         for (const column of board.columns) {
           const bankColumn = boardItem.columns.find((c) => c.label === column.label);
           if (!bankColumn) continue;
+          if (!column.solved) {
+            if (activePlayer) activePlayer.score += POINTS_PER_ASSOCIATIONS_COLUMN;
+            column.solvedBy = turn.activePlayerId;
+          }
           column.solved = true;
           column.solution = bankColumn.solution;
           for (const slot of column.clues) {
@@ -1052,6 +1059,7 @@ export class RoomManager {
         if (!column || !bankColumn) return { ok: false, error: "Unknown column." };
         column.solved = true;
         column.solution = bankColumn.solution;
+        column.solvedBy = turn.activePlayerId;
         // Reveal any remaining closed clues in this column now that it's solved.
         for (const slot of column.clues) {
           if (slot.text === null) {

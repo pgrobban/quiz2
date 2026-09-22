@@ -28,6 +28,7 @@ import {
   EmojiEvents as EmojiEventsIcon,
 } from "@mui/icons-material";
 import { QRCodeSVG } from "qrcode.react";
+import { getPlayerColor } from "../lib/playerColors";
 import type {
   LetterSubmission,
   MathSubmission,
@@ -823,23 +824,42 @@ export default function SpectatePage() {
 
                 {(room.phase === "question" || room.phase === "reveal") &&
                   room.round === "associations" &&
-                  room.activeAssociationsBoard && (
+                  room.activeAssociationsBoard && (() => {
+                    const finalists = room.associationsTurn?.finalists ?? [];
+                    return (
                     <Stack flexGrow={1} justifyContent="center" spacing={2}>
                       <Typography variant="h4" textAlign="center">
                         {room.activeAssociationsBoard.title}
                       </Typography>
 
+                      {finalists.length === 2 && (
+                        <Stack direction="row" justifyContent="center" spacing={2}>
+                          {finalists.map((p) => (
+                            <Chip
+                              key={p.id}
+                              label={p.name}
+                              sx={{
+                                bgcolor: getPlayerColor(finalists, p.id),
+                                color: "#000",
+                                fontWeight: 700,
+                              }}
+                            />
+                          ))}
+                        </Stack>
+                      )}
+
                       {room.associationsTurn && room.phase === "question" && (
                         <Typography
                           textAlign="center"
                           variant="h6"
-                          color={
-                            room.associationsTurn.mode === "guess-only"
-                              ? "warning.main"
-                              : "info.main"
-                          }
+                          sx={{
+                            color: getPlayerColor(
+                              finalists,
+                              room.associationsTurn.activePlayerId,
+                            ),
+                          }}
                         >
-                          {room.associationsTurn.finalists.find(
+                          {finalists.find(
                             (p) => p.id === room.associationsTurn!.activePlayerId
                           )?.name ?? "?"}
                           's turn
@@ -856,6 +876,10 @@ export default function SpectatePage() {
                           if (cellIndex === null) {
                             // Center row: the shared final solution.
                             const finalSolved = room.activeAssociationsBoard!.finalSolved;
+                            const solverColor = getPlayerColor(
+                              finalists,
+                              room.activeAssociationsBoard!.finalSolvedBy,
+                            );
                             return (
                               <Box
                                 key="final"
@@ -867,6 +891,7 @@ export default function SpectatePage() {
                                     width: ASSOCIATIONS_BOX_WIDTH * 1.4,
                                     minHeight: 56,
                                     display: "flex",
+                                    flexDirection: "column",
                                     alignItems: "center",
                                     justifyContent: "center",
                                     textAlign: "center",
@@ -874,18 +899,31 @@ export default function SpectatePage() {
                                     fontSize: { xs: "0.95rem", sm: "1.1rem", md: "1.25rem" },
                                     fontWeight: 700,
                                     borderColor: finalSolved
-                                      ? "success.main"
+                                      ? (solverColor ?? "success.main")
                                       : "warning.main",
                                     borderWidth: 2,
                                     bgcolor: finalSolved
                                       ? "rgba(74, 222, 128, 0.18)"
                                       : "rgba(255, 193, 7, 0.12)",
-                                    color: finalSolved ? "success.main" : "warning.main",
+                                    color: finalSolved
+                                      ? (solverColor ?? "success.main")
+                                      : "warning.main",
                                   }}
                                 >
                                   {finalSolved
                                     ? room.activeAssociationsBoard!.finalSolution
                                     : "???"}
+                                  {finalSolved && room.activeAssociationsBoard!.finalSolvedBy && (
+                                    <Typography
+                                      variant="caption"
+                                      sx={{ color: solverColor, fontWeight: 400 }}
+                                    >
+                                      solved by{" "}
+                                      {finalists.find(
+                                        (p) => p.id === room.activeAssociationsBoard!.finalSolvedBy
+                                      )?.name}
+                                    </Typography>
+                                  )}
                                 </Paper>
                               </Box>
                             );
@@ -904,6 +942,7 @@ export default function SpectatePage() {
 
                           const renderTile = (col: (typeof leftCol), side: "left" | "right") => {
                             if (isSolutionRow) {
+                              const solverColor = getPlayerColor(finalists, col.solvedBy);
                               return (
                                 <Paper
                                   variant="outlined"
@@ -911,6 +950,7 @@ export default function SpectatePage() {
                                     width: ASSOCIATIONS_BOX_WIDTH,
                                     minHeight: 56,
                                     display: "flex",
+                                    flexDirection: "column",
                                     alignItems: "center",
                                     justifyContent: "center",
                                     textAlign: "center",
@@ -920,16 +960,24 @@ export default function SpectatePage() {
                                     ml: side === "left" ? `${indent}px` : 0,
                                     mr: side === "right" ? `${indent}px` : 0,
                                     borderColor: col.solved
-                                      ? "success.main"
+                                      ? (solverColor ?? "success.main")
                                       : "rgba(244, 244, 246, 0.16)",
                                     borderWidth: col.solved ? 2 : 1,
                                     bgcolor: col.solved
                                       ? "rgba(74, 222, 128, 0.18)"
                                       : "rgba(244, 244, 246, 0.1)",
-                                    color: col.solved ? "success.main" : undefined,
+                                    color: col.solved ? (solverColor ?? "success.main") : undefined,
                                   }}
                                 >
                                   {col.solved ? col.solution : col.label}
+                                  {col.solved && col.solvedBy && (
+                                    <Typography
+                                      variant="caption"
+                                      sx={{ color: solverColor, fontWeight: 400 }}
+                                    >
+                                      {finalists.find((p) => p.id === col.solvedBy)?.name}
+                                    </Typography>
+                                  )}
                                 </Paper>
                               );
                             }
@@ -971,7 +1019,8 @@ export default function SpectatePage() {
                         })}
                       </Stack>
                     </Stack>
-                  )}
+                    );
+                  })()}
 
                 {room.phase === "finished" && (
                   <Stack

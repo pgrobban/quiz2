@@ -53,6 +53,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import { getPlayerColor } from "../lib/playerColors";
 import {
   MATH_SCRAMBLE_PER_TILE,
   generateTargetScrambleCandidates,
@@ -1251,15 +1252,40 @@ export default function HostPage() {
 
             {(room.phase === "question" || room.phase === "reveal") &&
               room.round === "associations" &&
-              room.activeAssociationsBoard && (
+              room.activeAssociationsBoard &&
+              (() => {
+                const finalists = room.associationsTurn?.finalists ?? [];
+                return (
                 <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
                   <Typography variant="overline" color="text.secondary">
                     Associations · Board {room.currentQuestionIndex + 1} of{" "}
                     {room.totalQuestions}
                   </Typography>
-                  <Typography variant="h6" textAlign="center" sx={{ mb: 2 }}>
+                  <Typography variant="h6" textAlign="center" sx={{ mb: 1 }}>
                     {room.activeAssociationsBoard.title}
                   </Typography>
+
+                  {finalists.length === 2 && (
+                    <Stack
+                      direction="row"
+                      justifyContent="center"
+                      spacing={2}
+                      sx={{ mb: 2 }}
+                    >
+                      {finalists.map((p) => (
+                        <Chip
+                          key={p.id}
+                          size="small"
+                          label={p.name}
+                          sx={{
+                            bgcolor: getPlayerColor(finalists, p.id),
+                            color: "#000",
+                            fontWeight: 700,
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                  )}
 
                   {room.associationsTurn && room.phase === "question" && (
                     <Alert
@@ -1270,9 +1296,20 @@ export default function HostPage() {
                       }
                       sx={{ mb: 2 }}
                     >
-                      {room.associationsTurn.finalists.find(
-                        (p) => p.id === room.associationsTurn!.activePlayerId,
-                      )?.name ?? "?"}
+                      <Box
+                        component="span"
+                        sx={{
+                          color: getPlayerColor(
+                            finalists,
+                            room.associationsTurn.activePlayerId,
+                          ),
+                          fontWeight: 700,
+                        }}
+                      >
+                        {finalists.find(
+                          (p) => p.id === room.associationsTurn!.activePlayerId,
+                        )?.name ?? "?"}
+                      </Box>
                       's turn -{" "}
                       {room.associationsTurn.mode === "guess-only"
                         ? "may only attempt a guess (no opening fields)"
@@ -1281,7 +1318,12 @@ export default function HostPage() {
                   )}
 
                   <Grid container spacing={1.5}>
-                    {room.activeAssociationsBoard.columns.map((col) => (
+                    {room.activeAssociationsBoard.columns.map((col) => {
+                      const solverColor = getPlayerColor(finalists, col.solvedBy);
+                      const solverName = finalists.find(
+                        (p) => p.id === col.solvedBy,
+                      )?.name;
+                      return (
                       <Grid item xs={6} key={col.label}>
                         <Paper
                           variant="outlined"
@@ -1291,8 +1333,9 @@ export default function HostPage() {
                               ? "rgba(74, 222, 128, 0.12)"
                               : undefined,
                             borderColor: col.solved
-                              ? "success.main"
+                              ? (solverColor ?? "success.main")
                               : undefined,
+                            borderWidth: col.solved && solverColor ? 2 : 1,
                           }}
                         >
                           <Typography
@@ -1328,14 +1371,25 @@ export default function HostPage() {
                             ))}
                           </Stack>
                           {col.solved ? (
-                            <Typography
-                              variant="body2"
-                              color="success.main"
-                              textAlign="center"
-                              sx={{ mt: 1, fontWeight: 600 }}
-                            >
-                              {col.solution}
-                            </Typography>
+                            <>
+                              <Typography
+                                variant="body2"
+                                color={solverColor ?? "success.main"}
+                                textAlign="center"
+                                sx={{ mt: 1, fontWeight: 600 }}
+                              >
+                                {col.solution}
+                              </Typography>
+                              {solverName && (
+                                <Typography
+                                  variant="caption"
+                                  textAlign="center"
+                                  sx={{ display: "block", color: solverColor }}
+                                >
+                                  solved by {solverName}
+                                </Typography>
+                              )}
+                            </>
                           ) : (
                             room.phase === "question" && (
                               <Button
@@ -1355,7 +1409,8 @@ export default function HostPage() {
                           )}
                         </Paper>
                       </Grid>
-                    ))}
+                      );
+                    })}
                   </Grid>
 
                   <Paper
@@ -1368,19 +1423,45 @@ export default function HostPage() {
                         ? "rgba(74, 222, 128, 0.12)"
                         : undefined,
                       borderColor: room.activeAssociationsBoard.finalSolved
-                        ? "success.main"
+                        ? (getPlayerColor(finalists, room.activeAssociationsBoard.finalSolvedBy) ?? "success.main")
                         : undefined,
+                      borderWidth:
+                        room.activeAssociationsBoard.finalSolved &&
+                        getPlayerColor(finalists, room.activeAssociationsBoard.finalSolvedBy)
+                          ? 2
+                          : 1,
                     }}
                   >
                     <Typography variant="subtitle2">Final Solution</Typography>
                     {room.activeAssociationsBoard.finalSolved ? (
-                      <Typography
-                        variant="h6"
-                        color="success.main"
-                        sx={{ fontWeight: 600 }}
-                      >
-                        {room.activeAssociationsBoard.finalSolution}
-                      </Typography>
+                      <>
+                        <Typography
+                          variant="h6"
+                          color={
+                            getPlayerColor(finalists, room.activeAssociationsBoard.finalSolvedBy) ??
+                            "success.main"
+                          }
+                          sx={{ fontWeight: 600 }}
+                        >
+                          {room.activeAssociationsBoard.finalSolution}
+                        </Typography>
+                        {room.activeAssociationsBoard.finalSolvedBy && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: getPlayerColor(
+                                finalists,
+                                room.activeAssociationsBoard.finalSolvedBy,
+                              ),
+                            }}
+                          >
+                            solved by{" "}
+                            {finalists.find(
+                              (p) => p.id === room.activeAssociationsBoard!.finalSolvedBy,
+                            )?.name}
+                          </Typography>
+                        )}
+                      </>
                     ) : (
                       room.phase === "question" && (
                         <Button
@@ -1431,7 +1512,8 @@ export default function HostPage() {
                     </Paper>
                   )}
                 </Paper>
-              )}
+                );
+              })()}
 
             {room.phase === "finished" && (
               <Paper

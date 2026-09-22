@@ -1288,9 +1288,11 @@ export function toPublicAssociationsBoard(
       })),
       solved: false,
       solution: null,
+      solvedBy: null,
     })),
     finalSolved: false,
     finalSolution: null,
+    finalSolvedBy: null,
   };
 }
 

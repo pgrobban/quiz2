@@ -4,13 +4,13 @@
  * Chosen for reasonable contrast against the app's dark theme.
  */
 export const PAIR_COLORS = [
+  "#60a5fa", // blue
   "#f87171", // red
   "#fb923c", // orange
   "#facc15", // yellow
   "#4ade80", // green
   "#34d399", // teal
   "#22d3ee", // cyan
-  "#60a5fa", // blue
   "#a78bfa", // violet
   "#f472b6", // pink
   "#fbbf24", // amber

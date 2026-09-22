@@ -194,6 +194,8 @@ export interface AssociationsColumnState {
   solved: boolean;
   /** Revealed only once solved (or force-revealed at round end). */
   solution: string | null;
+  /** The id of the finalist who solved this column, or null if unsolved (or force-revealed at round end without a specific solver). */
+  solvedBy: string | null;
 }
 
 /** The public board: clue text hidden until opened, solutions hidden until solved. */
@@ -202,6 +204,8 @@ export interface AssociationsBoard {
   columns: AssociationsColumnState[]; // always 4, labeled A-D
   finalSolved: boolean;
   finalSolution: string | null;
+  /** The id of the finalist who solved the final solution, or null if unsolved. */
+  finalSolvedBy: string | null;
 }
 
 /** Host-only bank definition: the real clues/solutions before anything is hidden. */
