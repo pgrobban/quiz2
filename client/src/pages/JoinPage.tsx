@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -54,8 +54,18 @@ type ViewState =
 
 export default function JoinPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [viewState, setViewState] = useState<ViewState>("form");
-  const [code, setCode] = useState("");
+  // Prefill from a QR code / shared link like /join?code=1234 (e.g. scanned
+  // off the spectate screen), so the player only has to type their name.
+  const [code, setCode] = useState(() => {
+    const fromUrl = searchParams.get("code") ?? "";
+    return /^\d{4}$/.test(fromUrl) ? fromUrl : "";
+  });
+  // If the room code came prefilled from the URL, jump straight to the name
+  // field since there's nothing left for the player to do with the code.
+  const codeWasPrefilled = useRef(/^\d{4}$/.test(searchParams.get("code") ?? "")).current;
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
@@ -107,6 +117,14 @@ export default function JoinPage() {
     submissions: MathSubmission[];
     closestSolution: { value: number; expression: string; distance: number } | null;
   } | null>(null);
+
+  useEffect(() => {
+    if (codeWasPrefilled) {
+      nameInputRef.current?.focus();
+    }
+    // Only run once on mount - the ref/flag are stable for the component's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     function onRoomUpdate(updatedRoom: RoomState) {
@@ -564,6 +582,7 @@ export default function JoinPage() {
               />
               <TextField
                 label="Your name"
+                inputRef={nameInputRef}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 inputProps={{ maxLength: 24 }}

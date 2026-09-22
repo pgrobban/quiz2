@@ -27,6 +27,7 @@ import {
   ArrowBack as ArrowBackIcon,
   EmojiEvents as EmojiEventsIcon,
 } from "@mui/icons-material";
+import { QRCodeSVG } from "qrcode.react";
 import type {
   LetterSubmission,
   MathSubmission,
@@ -272,6 +273,12 @@ export default function SpectatePage() {
     ? [...room.players].sort((a, b) => b.score - a.score)
     : [];
 
+  // A scannable shortcut straight to /join with the room code prefilled, so
+  // players don't have to type the 4-digit code in by hand.
+  const joinUrl = room
+    ? `${window.location.origin}/join?code=${room.code}`
+    : "";
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ minHeight: "100vh", py: 4 }}>
@@ -401,6 +408,21 @@ export default function SpectatePage() {
                     <Typography color="text.secondary">
                       {room.players.length} player
                       {room.players.length === 1 ? "" : "s"} ready
+                    </Typography>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        display: "inline-flex",
+                        borderRadius: 3,
+                        bgcolor: "#fff",
+                      }}
+                    >
+                      <QRCodeSVG value={joinUrl} size={320} marginSize={2} />
+                    </Paper>
+                    <Typography color="text.secondary" variant="body2">
+                      Scan to join - or go to /join and enter code{" "}
+                      <strong>{room.code}</strong>
                     </Typography>
                   </Stack>
                 )}
