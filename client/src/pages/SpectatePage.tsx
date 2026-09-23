@@ -461,9 +461,15 @@ export default function SpectatePage() {
                         muted
                         playsInline
                         sx={{
-                          width: "100%",
-                          maxWidth: 640,
-                          maxHeight: "55vh",
+                          // Let the video keep its own aspect ratio instead
+                          // of being forced to a fixed width - portrait
+                          // clips (recorded on a phone) need height to be
+                          // the dominant constraint, or they render tiny
+                          // and letterboxed inside an oversized wide box.
+                          width: "auto",
+                          height: "auto",
+                          maxWidth: "100%",
+                          maxHeight: "75vh",
                           objectFit: "contain",
                           borderRadius: 2,
                         }}
@@ -474,9 +480,10 @@ export default function SpectatePage() {
                         src={room.roundInfo.tutorial.url}
                         alt={`${room.roundInfo.title} tutorial`}
                         sx={{
-                          width: "100%",
-                          maxWidth: 640,
-                          maxHeight: "55vh",
+                          width: "auto",
+                          height: "auto",
+                          maxWidth: "100%",
+                          maxHeight: "75vh",
                           objectFit: "contain",
                           borderRadius: 2,
                         }}
