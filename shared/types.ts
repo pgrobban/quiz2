@@ -111,6 +111,8 @@ export interface MatchingItem {
 /** Two independently-shuffled columns of 10 items each, forming 10 true left/right pairs. */
 export interface MatchingBoard {
   title: string;
+  /** Shared deadline for the three-second title-only preview before play. */
+  previewEndsAt: number;
   left: MatchingItem[];
   right: MatchingItem[];
 }

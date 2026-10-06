@@ -36,6 +36,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import MatchingPreview, { useMatchingPreview } from "../components/MatchingPreview";
 import {
   MATH_SCRAMBLE_PER_TILE,
   generateTargetScrambleCandidates,
@@ -543,6 +544,11 @@ export default function JoinPage() {
   const myRank =
     sortedFinalPlayers.findIndex((p) => p.id === socket.id) + 1 || null;
 
+  const showMatchingPreview = useMatchingPreview(room);
+  if (showMatchingPreview && room?.activeMatchingBoard) {
+    return <MatchingPreview title={room.activeMatchingBoard.title} />;
+  }
+
   return (
     <Container maxWidth="sm">
       <Box
@@ -738,7 +744,7 @@ export default function JoinPage() {
           <>
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="overline" color="text.secondary">
-                Letters Round · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
+                You took the words out of my mouth · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
               </Typography>
               <Chip label={`${myScore} pts`} color="primary" size="small" />
             </Stack>
@@ -879,7 +885,7 @@ export default function JoinPage() {
           <>
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="overline" color="text.secondary">
-                Matching Round
+                Will you be my match?
               </Typography>
               <Chip label={`${myScore} pts`} color="primary" size="small" />
             </Stack>
@@ -910,23 +916,35 @@ export default function JoinPage() {
                   {activeMatchingBoard.left.map((item) => {
                     const pairIndex = pairs.findIndex((p) => p.leftId === item.id);
                     const isStaged = stagedSide === "left" && stagedId === item.id;
+                    const isIncorrect = matchingRevealed?.results
+                      .find((r) => r.playerId === socket.id)?.guesses
+                      .some((g) => g.leftId === item.id && !g.correct) ?? false;
                     return (
                       <Badge
                         key={item.id}
                         badgeContent={pairIndex + 1}
                         invisible={pairIndex === -1}
-                        color="secondary"
+                        color={isIncorrect ? "error" : "secondary"}
                         sx={{ width: "100%" }}
                       >
                         <Button
                           variant={
                             pairIndex !== -1 ? "contained" : isStaged ? "contained" : "outlined"
                           }
-                          color={pairIndex !== -1 ? "secondary" : "primary"}
+                          color={isIncorrect ? "error" : pairIndex !== -1 ? "secondary" : "primary"}
                           fullWidth
                           disabled={timeExpired || !!matchingRevealed || matchingSubmitted}
                           onClick={() => handleTapMatchingItem("left", item.id)}
-                          sx={{ fontSize: "0.8rem", py: 1, textTransform: "none" }}
+                          sx={{
+                            fontSize: "0.8rem", py: 1, textTransform: "none",
+                            ...(isIncorrect && {
+                              "&.Mui-disabled": {
+                                color: "error.main",
+                                borderColor: "error.main",
+                                bgcolor: "rgba(244, 67, 54, 0.18)",
+                              },
+                            }),
+                          }}
                         >
                           {item.text}
                         </Button>
@@ -938,25 +956,55 @@ export default function JoinPage() {
                   {activeMatchingBoard.right.map((item) => {
                     const pairIndex = pairs.findIndex((p) => p.rightId === item.id);
                     const isStaged = stagedSide === "right" && stagedId === item.id;
+                    const isIncorrect = matchingRevealed?.results
+                      .find((r) => r.playerId === socket.id)?.guesses
+                      .some((g) => g.rightId === item.id && !g.correct) ?? false;
+                    const correctPair = matchingRevealed?.correctPairs.find(
+                      (p) => p.rightId === item.id
+                    );
+                    const correctMatch = activeMatchingBoard.left.find(
+                      (left) => left.id === correctPair?.leftId
+                    )?.text;
                     return (
                       <Badge
                         key={item.id}
                         badgeContent={pairIndex + 1}
                         invisible={pairIndex === -1}
-                        color="secondary"
+                        color={isIncorrect ? "error" : "secondary"}
                         sx={{ width: "100%" }}
                       >
                         <Button
                           variant={
                             pairIndex !== -1 ? "contained" : isStaged ? "contained" : "outlined"
                           }
-                          color={pairIndex !== -1 ? "secondary" : "primary"}
+                          color={isIncorrect ? "error" : pairIndex !== -1 ? "secondary" : "primary"}
                           fullWidth
                           disabled={timeExpired || !!matchingRevealed || matchingSubmitted}
                           onClick={() => handleTapMatchingItem("right", item.id)}
-                          sx={{ fontSize: "0.8rem", py: 1, textTransform: "none" }}
+                          sx={{
+                            fontSize: "0.8rem", py: 1, textTransform: "none",
+                            flexDirection: "column",
+                            ...(isIncorrect && {
+                              "&.Mui-disabled": {
+                                color: "error.main",
+                                borderColor: "error.main",
+                                bgcolor: "rgba(244, 67, 54, 0.18)",
+                              },
+                            }),
+                          }}
                         >
-                          {item.text}
+                          <Box component="span" sx={{ textDecoration: isIncorrect ? "line-through" : "none" }}>
+                            {item.text}
+                          </Box>
+                          {isIncorrect && correctMatch && (
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              sx={{ mt: 0.5, color: "success.main" }}
+                            >
+                              {correctMatch}
+                            </Typography>
+                          )}
                         </Button>
                       </Badge>
                     );
@@ -994,7 +1042,7 @@ export default function JoinPage() {
           <>
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="overline" color="text.secondary">
-                My Number · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
+                Let me give you my number · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
               </Typography>
               <Chip label={`${myScore} pts`} color="primary" size="small" />
             </Stack>

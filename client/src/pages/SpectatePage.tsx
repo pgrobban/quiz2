@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
-  Avatar,
   Box,
   Button,
   Chip,
@@ -15,9 +14,6 @@ import {
   DialogTitle,
   Grid,
   List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
   Paper,
   Stack,
   TextField,
@@ -40,6 +36,8 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import SpectatorScoreRow from "../components/SpectatorScoreRow";
+import MatchingPreview, { useMatchingPreview } from "../components/MatchingPreview";
 import {
   MATH_SCRAMBLE_PER_TILE,
   generateTargetScrambleCandidates,
@@ -47,6 +45,16 @@ import {
 import { resolvePairColor } from "../lib/pairColors";
 
 type ViewState = "form" | "joining" | "watching";
+
+const resultBubbleSx = {
+  bgcolor: "#000",
+  color: "#4ade80",
+  border: "2px solid #4ade80",
+  fontWeight: 700,
+  fontSize: "1rem",
+  height: "auto",
+  "& .MuiChip-label": { whiteSpace: "normal", py: 1 },
+};
 
 /**
  * The associations "wall" is laid out as 11 stacked rows forming an X shape:
@@ -280,6 +288,11 @@ export default function SpectatePage() {
     ? `${window.location.origin}/join?code=${room.code}`
     : "";
 
+  const showMatchingPreview = useMatchingPreview(room);
+  if (showMatchingPreview && room?.activeMatchingBoard) {
+    return <MatchingPreview title={room.activeMatchingBoard.title} />;
+  }
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ minHeight: "100vh", py: 4 }}>
@@ -368,7 +381,7 @@ export default function SpectatePage() {
                     room.phase !== "lobby" &&
                     room.phase !== "finished" && (
                       <Chip
-                        label={`Letters · Round ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        label={`You took the words out of my mouth · Round ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
                       />
                     )}
@@ -376,7 +389,7 @@ export default function SpectatePage() {
                     room.phase !== "lobby" &&
                     room.phase !== "finished" && (
                       <Chip
-                        label={`Making connections · Board ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        label={`Will you be my match? · Board ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
                       />
                     )}
@@ -384,7 +397,7 @@ export default function SpectatePage() {
                     room.phase !== "lobby" &&
                     room.phase !== "finished" && (
                       <Chip
-                        label={`My Number · Round ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        label={`Let me give you my number · Round ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
                       />
                     )}
@@ -392,7 +405,7 @@ export default function SpectatePage() {
                     room.phase !== "lobby" &&
                     room.phase !== "finished" && (
                       <Chip
-                        label={`Associations · Board ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
+                        label={`Do we have a connection? · Board ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
                       />
                     )}
@@ -588,6 +601,7 @@ export default function SpectatePage() {
                                   label={`${sub.playerName}: ${sub.word} ${sub.valid ? `(+${sub.points})` : "(invalid)"
                                     }`}
                                   color={sub.valid ? "success" : "default"}
+                                  sx={resultBubbleSx}
                                 />
                               </Grid>
                             ))}
@@ -747,6 +761,7 @@ export default function SpectatePage() {
                                 <Chip
                                   label={`${result.playerName}: ${result.correctCount}/${room.activeMatchingBoard?.left.length} (+${result.points})`}
                                   color={result.correctCount > 0 ? "success" : "default"}
+                                  sx={resultBubbleSx}
                                 />
                               </Grid>
                             ))}
@@ -820,6 +835,7 @@ export default function SpectatePage() {
                                       : `${sub.playerName}: ${sub.expression} (invalid)`
                                   }
                                   color={sub.points > 0 ? "success" : "default"}
+                                  sx={resultBubbleSx}
                                 />
                               </Grid>
                             ))}
@@ -1061,22 +1077,7 @@ export default function SpectatePage() {
                 ) : (
                   <List dense>
                     {sortedPlayers.map((player, index) => (
-                      <ListItem key={player.id}>
-                        <ListItemAvatar>
-                          <Avatar
-                            sx={{
-                              bgcolor:
-                                index === 0 ? "warning.main" : undefined,
-                            }}
-                          >
-                            {index + 1}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={player.name}
-                          secondary={`${player.score} pts`}
-                        />
-                      </ListItem>
+                      <SpectatorScoreRow key={player.id} player={player} rank={index + 1} />
                     ))}
                   </List>
                 )}

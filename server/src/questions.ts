@@ -26,28 +26,28 @@ export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
   },
   letters: {
     id: "letters",
-    title: "Letters",
+    title: "You took the words out of my mouth",
     description:
       "Make the longest word you can from the given letters. If your word is in the dictionary, you get 1p per letter, double points for long words (≥ 8 letters). Don't forget to lock in your answer!",
     tutorial: { type: "video", url: "/tutorials/letters.mp4" },
   },
   matching: {
     id: "matching",
-    title: "Matching",
+    title: "Will you be my match?",
     description:
       "Match pairs of related items before the timer runs out. 1p for each correct pair, +2 for a perfect board.",
     tutorial: { type: "video", url: "/tutorials/matching.mp4" },
   },
   math: {
     id: "math",
-    title: "My Number",
+    title: "Let me give you my number",
     description:
       "Get as close as you can to the target number using the given numbers and basic arithmetic. 15p for an exact match, 10p if diff ≤ 5, 5p if diff ≤ 10. Don't forget to lock in your answer!",
     tutorial: { type: "video", url: "/tutorials/math.mp4" },
   },
   associations: {
     id: "associations",
-    title: "Associations",
+    title: "Do we have a connection?",
     description:
       "Final round for the top 2 players: uncover clues on a 4-column wall to solve each column, then the overarching connection. 5 points for each column solved, 10 points for the final connection.",
     tutorial: { type: "video", url: "/tutorials/associations.mp4" },
@@ -414,7 +414,7 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
         right: { id: "m0-r1", text: "Bohemian Rhapsody" },
       },
       {
-        left: { id: "m0-l2", text: "Abba" },
+        left: { id: "m0-l2", text: "ABBA" },
         right: { id: "m0-r2", text: "Dancing Queen" },
       },
       {
@@ -1196,6 +1196,7 @@ export function toPublicMatchingBoard(
 ): MatchingBoard {
   return {
     title: board.title,
+    previewEndsAt: Date.now() + 3000,
     left: board.keepLeftOrder
       ? board.pairs.map((p) => p.left)
       : shuffle(board.pairs.map((p) => p.left)),
@@ -1524,7 +1525,7 @@ export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
 ];
 
 /** Shown to players/spectators on the live board, regardless of which board is picked - the real theme is the solution, kept secret until solved. */
-const ASSOCIATIONS_PUBLIC_TITLE = "What connects them all?";
+const ASSOCIATIONS_PUBLIC_TITLE = "Do we have a connection?";
 
 /** Builds the public (answer-free, nothing-opened-yet) board sent to clients. */
 export function toPublicAssociationsBoard(

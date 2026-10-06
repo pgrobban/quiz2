@@ -53,6 +53,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import MatchingPreview, { useMatchingPreview } from "../components/MatchingPreview";
 import { getPlayerColor } from "../lib/playerColors";
 import {
   MATH_SCRAMBLE_PER_TILE,
@@ -63,10 +64,10 @@ type ConnectionState = "connecting" | "ready" | "error";
 
 const ROUND_OPTIONS: { id: GameRound; label: string }[] = [
   { id: "quiz", label: "Should I know this?" },
-  { id: "letters", label: "Letters" },
-  { id: "matching", label: "Matching" },
-  { id: "math", label: "My Number" },
-  { id: "associations", label: "Associations" },
+  { id: "letters", label: "You took the words out of my mouth" },
+  { id: "matching", label: "Will you be my match?" },
+  { id: "math", label: "Let me give you my number" },
+  { id: "associations", label: "Do we have a connection?" },
 ];
 
 export default function HostPage() {
@@ -476,6 +477,11 @@ export default function HostPage() {
     room.totalQuestions === 0;
   const readyToPlay =
     !!room && room.phase === "lobby" && !!room.round && room.totalQuestions > 0;
+
+  const showMatchingPreview = useMatchingPreview(room);
+  if (showMatchingPreview && room?.activeMatchingBoard) {
+    return <MatchingPreview title={room.activeMatchingBoard.title} />;
+  }
 
   return (
     <Container maxWidth="sm">
@@ -967,7 +973,7 @@ export default function HostPage() {
                     sx={{ mb: 2 }}
                   >
                     <Typography variant="overline" color="text.secondary">
-                      Letters · Round {room.currentQuestionIndex + 1} of{" "}
+                      You took the words out of my mouth · Round {room.currentQuestionIndex + 1} of{" "}
                       {room.totalQuestions}
                     </Typography>
                     <Chip
@@ -1048,7 +1054,7 @@ export default function HostPage() {
                     sx={{ mb: 2 }}
                   >
                     <Typography variant="overline" color="text.secondary">
-                      Matching · Board {room.currentQuestionIndex + 1} of{" "}
+                      Will you be my match? · Board {room.currentQuestionIndex + 1} of{" "}
                       {room.totalQuestions}
                     </Typography>
                     <Chip
@@ -1161,7 +1167,7 @@ export default function HostPage() {
                     sx={{ mb: 2 }}
                   >
                     <Typography variant="overline" color="text.secondary">
-                      My Number · Round {room.currentQuestionIndex + 1} of{" "}
+                      Let me give you my number · Round {room.currentQuestionIndex + 1} of{" "}
                       {room.totalQuestions}
                     </Typography>
                     <Chip
@@ -1258,7 +1264,7 @@ export default function HostPage() {
                 return (
                 <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
                   <Typography variant="overline" color="text.secondary">
-                    Associations · Board {room.currentQuestionIndex + 1} of{" "}
+                    Do we have a connection? · Board {room.currentQuestionIndex + 1} of{" "}
                     {room.totalQuestions}
                   </Typography>
                   <Typography variant="h6" textAlign="center" sx={{ mb: 1 }}>

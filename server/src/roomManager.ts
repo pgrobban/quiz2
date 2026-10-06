@@ -423,7 +423,7 @@ export class RoomManager {
     if (internal.public.round === "matching") {
       const board = toPublicMatchingBoard(internal.selectedMatchingBoards[0]);
       internal.public.activeMatchingBoard = board;
-      internal.public.phaseDeadline = Date.now() + MATCHING_TIME_LIMIT_MS;
+      internal.public.phaseDeadline = board.previewEndsAt + MATCHING_TIME_LIMIT_MS;
       internal.matchingGuesses.clear();
       internal.public.gameStarted = true;
       return { ok: true, room: internal.public, matchingBoard: board };
@@ -711,7 +711,7 @@ export class RoomManager {
     if (isMatching) {
       const board = toPublicMatchingBoard(internal.selectedMatchingBoards[nextIndex]);
       internal.public.activeMatchingBoard = board;
-      internal.public.phaseDeadline = Date.now() + MATCHING_TIME_LIMIT_MS;
+      internal.public.phaseDeadline = board.previewEndsAt + MATCHING_TIME_LIMIT_MS;
       internal.matchingGuesses.clear();
       return { room: internal.public, matchingBoard: board, roundEnded: false };
     }
