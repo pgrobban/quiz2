@@ -71,9 +71,9 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-1",
-      text: "Dolphins are what type of animals?",
-      options: ["Fish", "Reptiles", "Birds", "Mammals"],
-      correctIndex: 3,
+      text: "Does Hakuna Matata mean 'no worries' in a real language?",
+      options: ["Yes", "No"],
+      correctIndex: 0,
     },
     {
       id: "quiz-2",
@@ -108,8 +108,8 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     {
       id: "quiz-7",
       text: "What is the capital of Switzerland?",
-      options: ["Zurich", "Geneva", "Bern", "Basel"],
-      correctIndex: 2,
+      options: ["Zurich", "Geneva", "Basel", "Bern"],
+      correctIndex: 3,
     },
     {
       id: "quiz-8",
@@ -140,7 +140,7 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-12",
-      text: "Is 'lutfisk' a species of fish?",
+      text: "Does the man on the Monopoly box have a monocle?",
       options: ["Yes", "No"],
       correctIndex: 1,
     },
@@ -277,7 +277,7 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-34",
-      text: "Did Julius Caesar die before or after the year 0?",
+      text: "Did Julius Caesar die before or after year 0 (the birth of Christ)?",
       options: ["Before", "After"],
       correctIndex: 0,
     },
@@ -307,7 +307,7 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-39",
-      text: "Do giraffes have horns?",
+      text: "Do giraffes have something other than ears on top of their heads?",
       options: ["Yes", "No"],
       correctIndex: 0,
     },
@@ -317,6 +317,66 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
       options: ["Stalin", "Lenin"],
       correctIndex: 1,
     },
+    {
+      id: "quiz-41",
+      text: "How long does it take for the Earth to revolve around the Sun?",
+      options: ["1 year", "1 day", "30 days", "7 days"],
+      correctIndex: 0
+    },
+    {
+      id: "quiz-42",
+      text: "What is one half divided by one half?",
+      options: ["1/4", "1/2", "1", "2"],
+      correctIndex: 2,
+    },
+    {
+      id: "quiz-43",
+      text: "Is there a hyphen (dash) in the Coca Cola logo?",
+      options: ["Yes", "No"],
+      correctIndex: 0,
+    },
+    {
+      id: "quiz-44",
+      text: "Which of the following is NOT a Transformers movie?",
+      options: ["The Last Knight", "Bumblebee", "Dark of the Moon", "Rise of the Machines"],
+      correctIndex: 3,
+    },
+    {
+      id: "quiz-45",
+      text: "In the original recording of 'Living next door to Alice' by Smokie, do they sing 'Who the fuck is Alice?'",
+      options: ["Yes", "No"],
+      correctIndex: 1,
+    },
+    {
+      id: "quiz-46",
+      text: "Can you pick up gold with a magnet?",
+      options: ["Yes", "No"],
+      correctIndex: 1,
+    },
+    {
+      id: "quiz-47",
+      text: "Which came first...",
+      options: ["The Bronze Age", "The Iron Age"],
+      correctIndex: 0,
+    },
+    {
+      id: "quiz-48",
+      text: "Did the Berlin Wall go around West or East Berlin?",
+      options: ["West", "East"],
+      correctIndex: 0,
+    },
+    {
+      id: "quiz-49",
+      text: "The whale shark is a...",
+      options: ["Whale", "Shark", "Mollusk", "Mammal"],
+      correctIndex: 1,
+    },
+    {
+      id: "quiz-50",
+      text: "Is there mustard on the standard McDonald's cheeseburger?",
+      options: ["Yes", "No"],
+      correctIndex: 0,
+    }
   ],
   letters: [],
   matching: [],
@@ -581,7 +641,7 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
     title: "Soccer teams and their countries",
     pairs: [
       {
-        left: { id: "m4-l1", text: "Fortuna Cettard" },
+        left: { id: "m4-l1", text: "Fortuna Sittard" },
         right: { id: "m4-r1", text: "Holland" },
       },
       {
@@ -639,8 +699,8 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
         right: { id: "m5-r3", text: "Sweden" },
       },
       {
-        left: { id: "m5-l4", text: "Ferrari" },
-        right: { id: "m5-r4", text: "Italy" },
+        left: { id: "m5-l4", text: "Aston Martin" },
+        right: { id: "m5-r4", text: "United Kingdom" },
       },
       {
         left: { id: "m5-l5", text: "Renault" },
@@ -659,8 +719,8 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
         right: { id: "m5-r8", text: "Italy" },
       },
       {
-        left: { id: "m5-l9", text: "Peugeot" },
-        right: { id: "m5-r9", text: "France" },
+        left: { id: "m5-l9", text: "Seat" },
+        right: { id: "m5-r9", text: "Spain" },
       },
       {
         left: { id: "m5-l10", text: "Jaguar" },
@@ -681,11 +741,11 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
         right: { id: "m6-r2", text: "Mozart" },
       },
       {
-        left: { id: "m6-l3", text: "Tosca" },
+        left: { id: "m6-l3", text: "Turandot" },
         right: { id: "m6-r3", text: "Giacomo Puccini" },
       },
       {
-        left: { id: "m6-l4", text: "Rigoletto" },
+        left: { id: "m6-l4", text: "La Traviata" },
         right: { id: "m6-r4", text: "Giuseppe Verdi" },
       },
       {
@@ -705,8 +765,8 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
         right: { id: "m6-r8", text: "Gioachino Rossini" },
       },
       {
-        left: { id: "m6-l9", text: "Turandot" },
-        right: { id: "m6-r9", text: "Giacomo Puccini" },
+        left: { id: "m6-l9", text: "Fidelio" },
+        right: { id: "m6-r9", text: "Ludwig van Beethoven" },
       },
       {
         left: { id: "m6-l10", text: "Tristan and Isolde" },
@@ -961,7 +1021,7 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
         right: { id: "m12-r3", text: "Michael Jackson" },
       },
       {
-        left: { id: "m12-l4", text: "Lucy in the Sky with Diamonds" },
+        left: { id: "m12-l4", text: "Eleanor Rigby" },
         right: { id: "m12-r4", text: "The Beatles" },
       },
       {
@@ -973,8 +1033,8 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
         right: { id: "m12-r6", text: "The Rolling Stones" },
       },
       {
-        left: { id: "m12-l7", text: "Eleanor Rigby" },
-        right: { id: "m12-r7", text: "The Beatles" },
+        left: { id: "m12-l7", text: "Maggie May" },
+        right: { id: "m12-r7", text: "Rod Stewart" },
       },
       {
         left: { id: "m12-l8", text: "Layla" },
@@ -990,6 +1050,144 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
       },
     ],
   },
+  {
+    id: "match-13",
+    title: "Currencies in Asia",
+    pairs: [
+      {
+        left: { id: "m13-l1", text: "Japan" },
+        right: { id: "m13-r1", text: "Yen" },
+      },
+      {
+        left: { id: "m13-l2", text: "China" },
+        right: { id: "m13-r2", text: "Renminbi" },
+      },
+      {
+        left: { id: "m13-l3", text: "Macao" },
+        right: { id: "m13-r3", text: "Pataca" },
+      },
+      {
+        left: { id: "m13-l4", text: "South Korea" },
+        right: { id: "m13-r4", text: "Won" },
+      },
+      {
+        left: { id: "m13-l5", text: "Thailand" },
+        right: { id: "m13-r5", text: "Baht" },
+      },
+      {
+        left: { id: "m13-l6", text: "Malaysia" },
+        right: { id: "m13-r6", text: "Ringgit" },
+      },
+      {
+        left: { id: "m13-l7", text: "Taiwan" },
+        right: { id: "m13-r7", text: "Dollar" },
+      },
+      {
+        left: { id: "m13-l8", text: "Indonesia" },
+        right: { id: "m13-r8", text: "Rupiah" },
+      },
+      {
+        left: { id: "m13-l9", text: "Philippines" },
+        right: { id: "m13-r9", text: "Peso" },
+      },
+      {
+        left: { id: "m13-l10", text: "Vietnam" },
+        right: { id: "m13-r10", text: "Dong" },
+      },
+    ],
+  },
+  {
+    id: "match-14",
+    title: "Religious terms",
+    pairs: [
+      {
+        left: { id: "m14-l1", text: "Sacrament" },
+        right: { id: "m14-r1", text: "Rite, ceremony" },
+      },
+      {
+        left: { id: "m14-l2", text: "Deity" },
+        right: { id: "m14-r2", text: "God" },
+      },
+      {
+        left: { id: "m14-l3", text: "Surah" },
+        right: { id: "m14-r3", text: "Chapter of the Quran" },
+      },
+      {
+        left: { id: "m14-l4", text: "Dharma" },
+        right: { id: "m14-r4", text: "Cosmic law, duty" },
+      },
+      {
+        left: { id: "m14-l5", text: "Fatwa" },
+        right: { id: "m14-r5", text: "Legal opinion" },
+      },
+      {
+        left: { id: "m14-l6", text: "Samsara" },
+        right: { id: "m14-r6", text: "Cycle of rebirth" },
+      },
+      {
+        left: { id: "m14-l7", text: "Bodhisattva" },
+        right: { id: "m14-r7", text: "Enlightened being" },
+      },
+      {
+        left: { id: "m14-l8", text: "Jinja" },
+        right: { id: "m14-r8", text: "Shinto shrine" },
+      },
+      {
+        left: { id: "m14-l9", text: "Gospel" },
+        right: { id: "m14-r9", text: "Good news" },
+      },
+      {
+        left: { id: "m14-l10", text: "Tabernacle" },
+        right: { id: "m14-r10", text: "Portable sanctuary" },
+      }
+    ],
+  },
+  {
+    id: "match-15",
+    title: "Phobias",
+    pairs: [
+      {
+        left: { id: "m15-l1", text: "Arachnophobia" },
+        right: { id: "m15-r1", text: "Fear of spiders" },
+      },
+      {
+        left: { id: "m15-l2", text: "Claustrophobia" },
+        right: { id: "m15-r2", text: "Fear of confined spaces" },
+      },
+      {
+        left: { id: "m15-l3", text: "Acrophobia" },
+        right: { id: "m15-r3", text: "Fear of heights" },
+      },
+      {
+        left: { id: "m15-l4", text: "Nyctophobia" },
+        right: { id: "m15-r4", text: "Fear of the dark" },
+      },
+      {
+        left: { id: "m15-l5", text: "Cynophobia" },
+        right: { id: "m15-r5", text: "Fear of dogs" },
+      },
+      {
+        left: { id: "m15-l6", text: "Ophidiophobia" },
+        right: { id: "m15-r6", text: "Fear of snakes" },
+      },
+      {
+        left: { id: "m15-l7", text: "Aerophobia" },
+        right: { id: "m15-r7", text: "Fear of flying" },
+      },
+      {
+        left: { id: "m15-l8", text: "Trypanophobia" },
+        right: { id: "m15-r8", text: "Fear of needles" },
+      },
+      {
+        left: { id: "m15-l9", text: "Speleophobia" },
+        right: { id: "m15-r9", text: "Fear of caves" },
+      },
+      {
+        left: { id: "m15-l10", text: "Glossophobia" },
+        right: { id: "m15-r10", text: "Fear of public speaking" },
+      },
+    ],
+  }
 ];
 
 /** Builds the public (shuffled, answer-free) board that gets sent to clients. */
@@ -1076,13 +1274,13 @@ export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
       },
       {
         label: "B",
-        clues: ["Person", "Unfamiliar", "Top & front", "Smile"],
+        clues: ["Person", "Expression", "Top & front", "Smile"],
         solution: "Face",
       },
       {
         label: "C",
-        clues: ["Pattern", "Christmas tree", "Jewelry", "Ornament"],
-        solution: "Decoration",
+        clues: ["Candle", "Ear", "Sealing", "Polishing"],
+        solution: "Wax",
       },
       {
         label: "D",
@@ -1162,7 +1360,7 @@ export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
       },
       {
         label: "B",
-        clues: ["Number", "Nucleus", "Clock", "Ant"],
+        clues: ["Mass", "Energy", "Nucleus", "Particle"],
         solution: "Atom",
       },
       {
@@ -1253,22 +1451,76 @@ export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
       },
       {
         label: "C",
-        clues: ["Eco", "Operation", "Periodic", "Solar"],
+        clues: ["Eco", "Operating", "Periodic", "Solar"],
         solution: "System",
       },
       {
         label: "D",
         clues: [
-          "Object in time",
-          "Software message",
-          "Probability outcome",
-          "Festival",
+          "X",
+          "Hope",
+          "Laser",
+          "Gamma",
         ],
-        solution: "Event",
+        solution: "Ray",
       },
     ],
     finalSolution: "Sun",
   },
+  {
+    id: "assoc-board-9",
+    title: "Beach",
+    columns: [
+      {
+        label: "A",
+        clues: ["Pressure", "Stool", "Drinks", "Music"],
+        solution: "Bar",
+      },
+      {
+        label: "B",
+        clues: ["Red", "Black", "Dead", "Water"],
+        solution: "Sea",
+      },
+      {
+        label: "C",
+        clues: ["Guard", "Look", "Clock", "Wrist"],
+        solution: "Watch",
+      },
+      {
+        label: "D",
+        clues: ["Throwing", "Drying", "Body", "Hanging"],
+        solution: "Towel",
+      },
+    ],
+    finalSolution: "Beach",
+  },
+  {
+    id: "assoc-board-10",
+    title: "Chain",
+    columns: [
+      {
+        label: "A",
+        clues: ["Room", "Pool", "Booking", "Reception"],
+        solution: "Hotel",
+      },
+      {
+        label: "B",
+        clues: ["Frame", "Pedals", "Light", "Wheels"],
+        solution: "Bicycle",
+      },
+      {
+        label: "C",
+        clues: ["Menu", "Reservation", "Waiter", "Table"],
+        solution: "Restaurant",
+      },
+      {
+        label: "D",
+        clues: ["Law", "Dictator", "Reign", "Control"],
+        solution: "Rule",
+      },
+    ],
+    finalSolution: "Chain",
+  }
 ];
 
 /** Shown to players/spectators on the live board, regardless of which board is picked - the real theme is the solution, kept secret until solved. */
