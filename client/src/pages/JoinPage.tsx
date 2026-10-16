@@ -36,6 +36,8 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import { answerTileSx, inkOnColor } from "../lib/tileStyles";
+import { namedColor } from "../lib/pairColors";
 import PlayerRoundHeader from "../components/PlayerRoundHeader";
 import MatchingPreview, { useMatchingPreview } from "../components/MatchingPreview";
 import {
@@ -705,7 +707,7 @@ export default function JoinPage() {
                           <CancelIcon />
                         ) : undefined
                       }
-                      sx={{ justifyContent: "space-between", py: 1.5, textTransform: "none" }}
+                      sx={{ ...answerTileSx(isSelected, isRevealedCorrect ? "#4ade80" : isRevealedWrongSelection ? "#f87171" : undefined), justifyContent: "space-between", py: 1.5, minHeight: 56, fontSize: "1.2rem", fontWeight: 800, textAlign: "left", textTransform: "none" }}
                     >
                       {option}
                     </Button>
@@ -795,10 +797,11 @@ export default function JoinPage() {
                         disabled={wordLocked || timeExpired}
                         onClick={() => handleTapBoxLetter(position)}
                         sx={{
+                          ...answerTileSx(true),
                           minWidth: 44,
                           height: 44,
                           fontFamily: "monospace",
-                          fontSize: "1.1rem",
+                          fontSize: "1.35rem",
                           fontWeight: 700,
                         }}
                       >
@@ -921,12 +924,15 @@ export default function JoinPage() {
                           disabled={timeExpired || !!matchingRevealed || matchingSubmitted}
                           onClick={() => handleTapMatchingItem("left", item.id)}
                           sx={{
-                            fontSize: "0.8rem", py: 1, textTransform: "none",
+                            ...answerTileSx(pairIndex !== -1 || isStaged,
+                              matchingRevealed ? namedColor(activeMatchingBoard.right.find((r) => r.id === matchingRevealed.correctPairs.find((p) => p.leftId === item.id)?.rightId)?.text ?? "") ?? undefined : undefined, "#FDE68A"),
+                            fontSize: "1rem", fontWeight: 800, lineHeight: 1.4, minHeight: 48, py: 1, textTransform: "none",
                             ...(isIncorrect && {
                               "&.Mui-disabled": {
-                                color: "error.main",
+                                color: namedColor(activeMatchingBoard.right.find((r) => r.id === matchingRevealed?.correctPairs.find((p) => p.leftId === item.id)?.rightId)?.text ?? "")
+                                  ? inkOnColor(namedColor(activeMatchingBoard.right.find((r) => r.id === matchingRevealed?.correctPairs.find((p) => p.leftId === item.id)?.rightId)?.text ?? "")!) : "#b91c1c",
                                 borderColor: "error.main",
-                                bgcolor: "rgba(244, 67, 54, 0.18)",
+                                bgcolor: namedColor(activeMatchingBoard.right.find((r) => r.id === matchingRevealed?.correctPairs.find((p) => p.leftId === item.id)?.rightId)?.text ?? "") ?? "#F5F0E8",
                               },
                             }),
                           }}
@@ -967,13 +973,15 @@ export default function JoinPage() {
                           disabled={timeExpired || !!matchingRevealed || matchingSubmitted}
                           onClick={() => handleTapMatchingItem("right", item.id)}
                           sx={{
-                            fontSize: "0.8rem", py: 1, textTransform: "none",
+                            ...answerTileSx(pairIndex !== -1 || isStaged,
+                              matchingRevealed ? namedColor(item.text) ?? undefined : undefined, "#FDE68A"),
+                            fontSize: "1rem", fontWeight: 800, lineHeight: 1.4, minHeight: 48, py: 1, textTransform: "none",
                             flexDirection: "column",
                             ...(isIncorrect && {
                               "&.Mui-disabled": {
-                                color: "error.main",
+                                color: namedColor(item.text) ? inkOnColor(namedColor(item.text)!) : "#b91c1c",
                                 borderColor: "error.main",
-                                bgcolor: "rgba(244, 67, 54, 0.18)",
+                                bgcolor: namedColor(item.text) ?? "#F5F0E8",
                               },
                             }),
                           }}
@@ -985,7 +993,7 @@ export default function JoinPage() {
                             <Typography
                               component="span"
                               variant="caption"
-                              sx={{ mt: 0.5, color: "success.main" }}
+                              sx={{ mt: 0.5, color: namedColor(item.text) ? inkOnColor(namedColor(item.text)!) : "#166534", fontWeight: 700 }}
                             >
                               {correctMatch}
                             </Typography>
@@ -1013,7 +1021,7 @@ export default function JoinPage() {
                     return (
                       <Alert severity={mine.correctCount > 0 ? "success" : "info"}>
                         You matched {mine.correctCount} / {activeMatchingBoard.left.length}{" "}
-                        correctly - +{mine.points} points
+                        correctly (+{mine.points} points)
                       </Alert>
                     );
                   })()}

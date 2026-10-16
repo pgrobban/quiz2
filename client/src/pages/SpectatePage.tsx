@@ -42,6 +42,8 @@ import {
   generateTargetScrambleCandidates,
 } from "../lib/mathScramble";
 import { resolvePairColor } from "../lib/pairColors";
+import { namedColor } from "../lib/pairColors";
+import { tileSx, TILE_BACKGROUND, TILE_TEXT, inkOnColor } from "../lib/tileStyles";
 
 type ViewState = "form" | "joining" | "watching";
 
@@ -557,9 +559,9 @@ export default function SpectatePage() {
                                     ? "success.main"
                                     : "rgba(244, 244, 246, 0.16)",
                                   borderWidth: isCorrect ? 2 : 1,
-                                  bgcolor: isCorrect
-                                    ? "rgba(74, 222, 128, 0.18)"
-                                    : "rgba(244, 244, 246, 0.04)",
+                                  bgcolor: isCorrect ? "#4ade80" : TILE_BACKGROUND,
+                                  color: TILE_TEXT,
+                                  fontWeight: 700,
                                   transition: "all 0.2s",
                                 }}
                               >
@@ -675,9 +677,9 @@ export default function SpectatePage() {
                                     textAlign: "center",
                                     borderColor: color ?? "rgba(244, 244, 246, 0.16)",
                                     borderWidth: color ? 2 : 1,
-                                    bgcolor: color ? `${color}2e` : undefined,
-                                    color: color ?? undefined,
-                                    fontWeight: color ? 700 : 400,
+                                    bgcolor: pairIndex !== -1 ? namedColor(rightText ?? "") ?? TILE_BACKGROUND : TILE_BACKGROUND,
+                                    color: inkOnColor(pairIndex !== -1 ? namedColor(rightText ?? "") ?? TILE_BACKGROUND : TILE_BACKGROUND),
+                                    fontWeight: 700,
                                     transition: "all 0.2s",
                                   }}
                                 >
@@ -708,9 +710,9 @@ export default function SpectatePage() {
                                     textAlign: "center",
                                     borderColor: color ?? "rgba(244, 244, 246, 0.16)",
                                     borderWidth: color ? 2 : 1,
-                                    bgcolor: color ? `${color}2e` : undefined,
-                                    color: color ?? undefined,
-                                    fontWeight: color ? 700 : 400,
+                                    bgcolor: pairIndex !== -1 ? namedColor(item.text) ?? TILE_BACKGROUND : TILE_BACKGROUND,
+                                    color: inkOnColor(pairIndex !== -1 ? namedColor(item.text) ?? TILE_BACKGROUND : TILE_BACKGROUND),
+                                    fontWeight: 700,
                                     transition: "all 0.2s",
                                   }}
                                 >
@@ -895,11 +897,11 @@ export default function SpectatePage() {
                                       : "warning.main",
                                     borderWidth: 2,
                                     bgcolor: finalSolved
-                                      ? "rgba(74, 222, 128, 0.18)"
-                                      : "rgba(255, 193, 7, 0.12)",
+                                      ? (solverColor ?? TILE_BACKGROUND)
+                                      : TILE_BACKGROUND,
                                     color: finalSolved
-                                      ? (solverColor ?? "success.main")
-                                      : "warning.main",
+                                      ? inkOnColor(solverColor ?? TILE_BACKGROUND)
+                                      : TILE_TEXT,
                                   }}
                                 >
                                   {finalSolved
@@ -908,7 +910,7 @@ export default function SpectatePage() {
                                   {finalSolved && room.activeAssociationsBoard!.finalSolvedBy && (
                                     <Typography
                                       variant="caption"
-                                      sx={{ color: solverColor, fontWeight: 400 }}
+                                      sx={{ color: "inherit", fontWeight: 700 }}
                                     >
                                       solved by{" "}
                                       {finalists.find(
@@ -956,16 +958,16 @@ export default function SpectatePage() {
                                       : "rgba(244, 244, 246, 0.16)",
                                     borderWidth: col.solved ? 2 : 1,
                                     bgcolor: col.solved
-                                      ? "rgba(74, 222, 128, 0.18)"
-                                      : "rgba(244, 244, 246, 0.1)",
-                                    color: col.solved ? (solverColor ?? "success.main") : undefined,
+                                      ? (solverColor ?? TILE_BACKGROUND)
+                                      : TILE_BACKGROUND,
+                                    color: inkOnColor(col.solved ? solverColor ?? TILE_BACKGROUND : TILE_BACKGROUND),
                                   }}
                                 >
                                   {col.solved ? col.solution : col.label}
                                   {col.solved && col.solvedBy && (
                                     <Typography
                                       variant="caption"
-                                      sx={{ color: solverColor, fontWeight: 400 }}
+                                      sx={{ color: "inherit", fontWeight: 700 }}
                                     >
                                       {finalists.find((p) => p.id === col.solvedBy)?.name}
                                     </Typography>
@@ -988,10 +990,11 @@ export default function SpectatePage() {
                                   fontSize: { xs: "0.85rem", sm: "1rem", md: "1.1rem" },
                                   ml: side === "left" ? `${indent}px` : 0,
                                   mr: side === "right" ? `${indent}px` : 0,
-                                  bgcolor: clue.text
-                                    ? "rgba(244, 244, 246, 0.06)"
-                                    : "rgba(0,0,0,0.25)",
-                                  color: clue.text ? undefined : "text.secondary",
+                                  ...tileSx,
+                                  ...(col.solved && getPlayerColor(finalists, col.solvedBy) && {
+                                    bgcolor: getPlayerColor(finalists, col.solvedBy),
+                                    color: inkOnColor(getPlayerColor(finalists, col.solvedBy)!),
+                                  }),
                                 }}
                               >
                                 {clue.text ?? clue.field}

@@ -1,11 +1,10 @@
 import { createTheme } from "@mui/material/styles";
+import { TILE_BACKGROUND, TILE_TEXT } from "./lib/tileStyles";
 
 export const theme = createTheme({
   palette: {
     mode: "dark",
-    // Brighter, higher-contrast tones than the previous #9600b4/near-black
-    // combo - dark saturated colors on a dark background are hard to read.
-    primary: { main: "#c084fc", contrastText: "#1a0b2e" }, // violet-300
+    primary: { main: TILE_BACKGROUND, contrastText: TILE_TEXT },
     secondary: { main: "#38bdf8", contrastText: "#04121b" }, // sky-400
     success: { main: "#4ade80" }, // green-400
     error: { main: "#f87171" }, // red-400
@@ -22,8 +21,19 @@ export const theme = createTheme({
   },
   typography: {
     fontFamily: `"Optima", "Roboto", "Helvetica", "Arial", sans-serif`,
+    button: {
+      fontSize: "1rem",
+      fontWeight: 700,
+      lineHeight: 1.4,
+    },
   },
   components: {
+    MuiButton: {
+      styleOverrides: {
+        sizeSmall: { fontSize: "0.95rem" },
+        sizeLarge: { fontSize: "1.15rem" },
+      },
+    },
     MuiPaper: {
       styleOverrides: {
         root: {
@@ -40,4 +50,3 @@ export const theme = createTheme({
     },
   },
 });
-

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ButtonBase, Paper, Stack } from "@mui/material";
+import { TILE_BACKGROUND, TILE_TEXT } from "../lib/tileStyles";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const SCRAMBLE_INTERVAL_MS = 80;
@@ -93,26 +94,32 @@ export default function LetterReveal({
         const display = isSettled ? letter : isActive ? scrambleChar || "•" : "";
         const isUsed = usedIndices.includes(index);
         const isInteractive = isSettled && !!onTileClick && !isUsed;
+        // Reserve space for the widest possible scramble value up front,
+        // including padding/borders, so e.g. 25 -> 100 doesn't resize a tile.
+        const candidates = scrambleCandidatesPerTile?.[index] ?? scrambleCharset;
+        const maxCharacters = Math.max(letter.length, ...candidates.map((value) => value.length));
+        const tileWidth = Math.max(tileSize, Math.ceil(maxCharacters * tileSize * 0.5 * 0.62 + 18));
 
         const tile = (
           <Paper
             elevation={isSettled ? 4 : 0}
             variant={isSettled ? "elevation" : "outlined"}
             sx={{
-              minWidth: tileSize,
-              width: "auto",
+              minWidth: tileWidth,
+              width: tileWidth,
+              boxSizing: "border-box",
               px: 1,
               height: tileSize * 1.15,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: tileSize * 0.4,
-              fontWeight: 700,
+              fontSize: tileSize * 0.5,
+              fontWeight: 800,
               fontFamily: "monospace",
-              bgcolor: isSettled ? "primary.main" : "rgba(244, 244, 246, 0.04)",
-              color: isSettled ? "primary.contrastText" : "text.secondary",
+              bgcolor: TILE_BACKGROUND,
+              color: TILE_TEXT,
               borderColor: "rgba(244, 244, 246, 0.16)",
-              opacity: isUsed ? 0.3 : 1,
+              opacity: isUsed ? 0.3 : isSettled || isActive ? 1 : 0.4,
               transition: "background-color 0.15s ease, opacity 0.15s ease",
             }}
           >

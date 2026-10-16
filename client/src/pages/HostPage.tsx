@@ -53,6 +53,8 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import { tileSx, TILE_BACKGROUND, TILE_TEXT, inkOnColor, answerTileSx } from "../lib/tileStyles";
+import { namedColor } from "../lib/pairColors";
 import MatchingPreview, { useMatchingPreview } from "../components/MatchingPreview";
 import { getPlayerColor } from "../lib/playerColors";
 import {
@@ -360,16 +362,10 @@ export default function HostPage() {
   };
 
   const handleChangeRound = () => {
-    setAvailableQuestions(null);
-    setSelectedQuestionIds([]);
-    setAvailableMatchingBoards(null);
-    setSelectedMatchingBoardIds([]);
-    setAvailableAssociationsBoards(null);
-    setSelectedAssociationsBoardIds([]);
-    setPendingGuess(null);
-    setRoundCount(3);
-    if (room)
-      setRoom({ ...room, round: null, roundInfo: null, totalQuestions: 0 });
+    if (!room) return;
+    // Reset the server's selection as well; the round-ended listener clears
+    // the local picker state once the authoritative lobby update arrives.
+    socket.emit("host:end-round", { code: room.code });
   };
 
   const handleShowTutorial = () => {
@@ -549,7 +545,7 @@ export default function HostPage() {
                   sx={{ mb: 1 }}
                 >
                   <Typography variant="h6">Players</Typography>
-                  <Chip label={`${room.players.length} / 4`} color="primary" />
+                  <Chip label={`${room.players.length} / 5`} color="primary" />
                 </Stack>
 
                 {room.players.length === 0 ? (
@@ -945,9 +941,11 @@ export default function HostPage() {
                           variant="outlined"
                           sx={{
                             p: 1.5,
-                            bgcolor: isCorrect
-                              ? "rgba(74, 222, 128, 0.18)"
-                              : "rgba(244, 244, 246, 0.04)",
+                             bgcolor: isCorrect
+                              ? "#4ade80"
+                              : TILE_BACKGROUND,
+                            color: TILE_TEXT,
+                            fontWeight: 700,
                             borderColor: isCorrect
                               ? "success.main"
                               : "rgba(244, 244, 246, 0.16)",
@@ -1087,6 +1085,12 @@ export default function HostPage() {
                               p: 1,
                               textAlign: "center",
                               fontSize: "0.9rem",
+                              ...tileSx,
+                              ...(matchingRevealed && (() => {
+                                const rightId = matchingRevealed.correctPairs.find((p) => p.leftId === item.id)?.rightId;
+                                const color = namedColor(activeMatchingBoard.right.find((r) => r.id === rightId)?.text ?? "");
+                                return color ? { bgcolor: color, color: inkOnColor(color) } : {};
+                              })()),
                             }}
                           >
                             {item.text}
@@ -1104,6 +1108,9 @@ export default function HostPage() {
                               p: 1,
                               textAlign: "center",
                               fontSize: "0.9rem",
+                              ...tileSx,
+                              ...(matchingRevealed && namedColor(item.text)
+                                ? { bgcolor: namedColor(item.text)!, color: inkOnColor(namedColor(item.text)!) } : {}),
                             }}
                           >
                             {item.text}
@@ -1336,8 +1343,9 @@ export default function HostPage() {
                           sx={{
                             p: 1.5,
                             bgcolor: col.solved
-                              ? "rgba(74, 222, 128, 0.12)"
-                              : undefined,
+                              ? (solverColor ?? TILE_BACKGROUND)
+                              : TILE_BACKGROUND,
+                            color: inkOnColor(col.solved ? solverColor ?? TILE_BACKGROUND : TILE_BACKGROUND),
                             borderColor: col.solved
                               ? (solverColor ?? "success.main")
                               : undefined,
@@ -1367,6 +1375,7 @@ export default function HostPage() {
                                   handleOpenAssociationsField(clue.field)
                                 }
                                 sx={{
+                                  ...answerTileSx(false, col.solved ? solverColor : undefined),
                                   justifyContent: "flex-start",
                                   textTransform: "none",
                                   fontSize: "0.75rem",
@@ -1380,7 +1389,7 @@ export default function HostPage() {
                             <>
                               <Typography
                                 variant="body2"
-                                color={solverColor ?? "success.main"}
+                                color="inherit"
                                 textAlign="center"
                                 sx={{ mt: 1, fontWeight: 600 }}
                               >
@@ -1390,7 +1399,7 @@ export default function HostPage() {
                                 <Typography
                                   variant="caption"
                                   textAlign="center"
-                                  sx={{ display: "block", color: solverColor }}
+                                  sx={{ display: "block", color: "inherit" }}
                                 >
                                   solved by {solverName}
                                 </Typography>
@@ -1426,8 +1435,11 @@ export default function HostPage() {
                       p: 2,
                       textAlign: "center",
                       bgcolor: room.activeAssociationsBoard.finalSolved
-                        ? "rgba(74, 222, 128, 0.12)"
-                        : undefined,
+                        ? (getPlayerColor(finalists, room.activeAssociationsBoard.finalSolvedBy) ?? TILE_BACKGROUND)
+                        : TILE_BACKGROUND,
+                      color: inkOnColor(room.activeAssociationsBoard.finalSolved
+                        ? getPlayerColor(finalists, room.activeAssociationsBoard.finalSolvedBy) ?? TILE_BACKGROUND
+                        : TILE_BACKGROUND),
                       borderColor: room.activeAssociationsBoard.finalSolved
                         ? (getPlayerColor(finalists, room.activeAssociationsBoard.finalSolvedBy) ?? "success.main")
                         : undefined,
@@ -1443,10 +1455,7 @@ export default function HostPage() {
                       <>
                         <Typography
                           variant="h6"
-                          color={
-                            getPlayerColor(finalists, room.activeAssociationsBoard.finalSolvedBy) ??
-                            "success.main"
-                          }
+                          color="inherit"
                           sx={{ fontWeight: 600 }}
                         >
                           {room.activeAssociationsBoard.finalSolution}
@@ -1455,10 +1464,7 @@ export default function HostPage() {
                           <Typography
                             variant="caption"
                             sx={{
-                              color: getPlayerColor(
-                                finalists,
-                                room.activeAssociationsBoard.finalSolvedBy,
-                              ),
+                              color: "inherit",
                             }}
                           >
                             solved by{" "}

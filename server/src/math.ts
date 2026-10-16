@@ -14,7 +14,7 @@ function pick<T>(items: T[]): T {
 }
 
 /**
- * Generates a 3-digit target and 6 numbers to combine: 4 single-digit
+ * Generates a target from 300–999 and 6 numbers to combine: 4 single-digit
  * numbers, one "medium" number (10/15/20), and one "large" number
  * (25/50/75/100) - a Countdown-numbers-round-style challenge. The numbers
  * are always returned in this grouped order (digits, then medium, then
@@ -22,11 +22,27 @@ function pick<T>(items: T[]): T {
  * can consistently reflect which "kind" of number each position holds.
  */
 export function generateMathChallenge(): MathChallenge {
-  const target = randomInt(100, 999);
   const numbers: number[] = [];
   for (let i = 0; i < 4; i++) numbers.push(randomInt(SMALL_MIN, SMALL_MAX));
   numbers.push(pick(MEDIUM_NUMBERS));
   numbers.push(pick(LARGE_NUMBERS));
+  // Exclude one-operation answers, using distinct tiles (including when
+  // two tiles happen to have the same value).
+  const easyTargets = new Set(numbers);
+  for (let i = 0; i < numbers.length; i++) {
+    for (let j = 0; j < numbers.length; j++) {
+      if (i === j) continue;
+      const a = numbers[i];
+      const b = numbers[j];
+      easyTargets.add(a + b);
+      easyTargets.add(a - b);
+      easyTargets.add(a * b);
+      if (a % b === 0) easyTargets.add(a / b);
+    }
+  }
+  const targets = Array.from({ length: 700 }, (_, i) => i + 300)
+    .filter((value) => !easyTargets.has(value));
+  const target = pick(targets);
   return { target, numbers };
 }
 
