@@ -36,6 +36,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import PlayerRoundHeader from "../components/PlayerRoundHeader";
 import MatchingPreview, { useMatchingPreview } from "../components/MatchingPreview";
 import {
   MATH_SCRAMBLE_PER_TILE,
@@ -647,13 +648,7 @@ export default function JoinPage() {
 
         {viewState === "question" && room && question && (
           <>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="overline" color="text.secondary">
-                Question {room.currentQuestionIndex + 1} of{" "}
-                {room.totalQuestions}
-              </Typography>
-              <Chip label={`${myScore} pts`} color="primary" size="small" />
-            </Stack>
+            <PlayerRoundHeader index={room.currentQuestionIndex} total={room.totalQuestions} score={myScore} />
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
               {room.phaseDeadline !== null && (
@@ -742,12 +737,7 @@ export default function JoinPage() {
 
         {viewState === "letters" && room && activeLetters && (
           <>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="overline" color="text.secondary">
-                You took the words out of my mouth · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
-              </Typography>
-              <Chip label={`${myScore} pts`} color="primary" size="small" />
-            </Stack>
+            <PlayerRoundHeader index={room.currentQuestionIndex} total={room.totalQuestions} score={myScore} />
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
               {room.phaseDeadline !== null && (
@@ -883,12 +873,7 @@ export default function JoinPage() {
 
         {viewState === "matching" && room && activeMatchingBoard && (
           <>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="overline" color="text.secondary">
-                Will you be my match?
-              </Typography>
-              <Chip label={`${myScore} pts`} color="primary" size="small" />
-            </Stack>
+            <PlayerRoundHeader index={room.currentQuestionIndex} total={room.totalQuestions} score={myScore} />
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
               {room.phaseDeadline !== null && (
@@ -1040,12 +1025,7 @@ export default function JoinPage() {
 
         {viewState === "math" && room && activeMathChallenge && (
           <>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="overline" color="text.secondary">
-                Let me give you my number · Round {room.currentQuestionIndex + 1} of {room.totalQuestions}
-              </Typography>
-              <Chip label={`${myScore} pts`} color="primary" size="small" />
-            </Stack>
+            <PlayerRoundHeader index={room.currentQuestionIndex} total={room.totalQuestions} score={myScore} />
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
               {room.phaseDeadline !== null && (

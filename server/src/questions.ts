@@ -152,9 +152,9 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-14",
-      text: "Are there risk zones for tics (fästingar) on the Swedish west coast?",
+      text: "Does Donald Duck have visible ears?",
       options: ["Yes", "No"],
-      correctIndex: 0,
+      correctIndex: 1,
     },
     {
       id: "quiz-15",
@@ -194,9 +194,9 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-21",
-      text: "How many times was Astrid Lindgren married?",
-      options: ["0", "1", "2", "3"],
-      correctIndex: 1,
+      text: "What is the number of the elevator closest to Gennie's reception?",
+      options: ["1", "2", "3", "4"],
+      correctIndex: 0,
     },
     {
       id: "quiz-22",
@@ -253,9 +253,9 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-30",
-      text: "What year was D-day?",
-      options: ["1942", "1943", "1944", "1945"],
-      correctIndex: 2,
+      text: "What is the number of the elevator closest to Gennie's reception?",
+      options: ["1", "4"],
+      correctIndex: 0,
     },
     {
       id: "quiz-31",
@@ -319,9 +319,9 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-41",
-      text: "How long does it take for the Earth to revolve around the Sun?",
-      options: ["1 year", "1 day", "30 days", "7 days"],
-      correctIndex: 0
+      text: "How is our company name written on the elevator screens?",
+      options: ["Surikat AB", "Surikat Sweden AB"],
+      correctIndex: 1
     },
     {
       id: "quiz-42",
@@ -1334,7 +1334,7 @@ export const ASSOCIATIONS_BANK: AssociationsBoardBankItem[] = [
       },
       {
         label: "B",
-        clues: ["Rice", "Cotton", "War", "Magnet"],
+        clues: ["Electricity", "Rice", "War", "Magnet"],
         solution: "Field",
       },
       {

@@ -13,7 +13,6 @@ import {
   DialogContentText,
   DialogTitle,
   Grid,
-  List,
   Paper,
   Stack,
   TextField,
@@ -36,7 +35,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
-import SpectatorScoreRow from "../components/SpectatorScoreRow";
+import SpectatorSidebar, { type SpectatorResult } from "../components/SpectatorSidebar";
 import MatchingPreview, { useMatchingPreview } from "../components/MatchingPreview";
 import {
   MATH_SCRAMBLE_PER_TILE,
@@ -46,15 +45,6 @@ import { resolvePairColor } from "../lib/pairColors";
 
 type ViewState = "form" | "joining" | "watching";
 
-const resultBubbleSx = {
-  bgcolor: "#000",
-  color: "#4ade80",
-  border: "2px solid #4ade80",
-  fontWeight: 700,
-  fontSize: "1rem",
-  height: "auto",
-  "& .MuiChip-label": { whiteSpace: "normal", py: 1 },
-};
 
 /**
  * The associations "wall" is laid out as 11 stacked rows forming an X shape:
@@ -281,6 +271,32 @@ export default function SpectatePage() {
   const sortedPlayers: Player[] = room
     ? [...room.players].sort((a, b) => b.score - a.score)
     : [];
+
+  const sidebarResults = useMemo<SpectatorResult[]>(() => {
+    if (room?.phase !== "reveal") return [];
+    if (room.round === "letters" && lettersReveal) {
+      return lettersReveal.submissions.map((sub) => ({
+        playerId: sub.playerId, points: sub.points,
+        text: `${sub.playerName}: ${sub.word} ${sub.valid ? `(+${sub.points})` : "(invalid)"}`,
+      }));
+    }
+    if (room.round === "matching" && matchingRevealed) {
+      return matchingRevealed.results.map((result) => ({
+        playerId: result.playerId, points: result.points,
+        text: `${result.playerName}: ${result.correctCount}/${room.activeMatchingBoard?.left.length} (+${result.points})`,
+      }));
+    }
+    if (room.round === "math" && mathRevealed) {
+      return mathRevealed.submissions.map((sub) => ({
+        playerId: sub.playerId, points: sub.points,
+        text: sub.value !== null
+          ? `${sub.playerName}: ${sub.expression} = ${sub.value} (+${sub.points})`
+          : `${sub.playerName}: ${sub.expression} (invalid)`,
+      }));
+    }
+    return [];
+  }, [room?.phase, room?.round, room?.activeMatchingBoard?.left.length,
+    lettersReveal, matchingRevealed, mathRevealed]);
 
   // A scannable shortcut straight to /join with the room code prefilled, so
   // players don't have to type the 4-digit code in by hand.
@@ -591,21 +607,6 @@ export default function SpectatePage() {
 
                       {lettersReveal && (
                         <Stack spacing={2}>
-                          <Typography variant="h6" textAlign="center">
-                            Player Words
-                          </Typography>
-                          <Grid container spacing={1.5} justifyContent="center">
-                            {lettersReveal.submissions.map((sub) => (
-                              <Grid item key={sub.playerId}>
-                                <Chip
-                                  label={`${sub.playerName}: ${sub.word} ${sub.valid ? `(+${sub.points})` : "(invalid)"
-                                    }`}
-                                  color={sub.valid ? "success" : "default"}
-                                  sx={resultBubbleSx}
-                                />
-                              </Grid>
-                            ))}
-                          </Grid>
 
                           <Typography
                             variant="h6"
@@ -752,20 +753,6 @@ export default function SpectatePage() {
                             })}
                           </Stack>
 
-                          <Typography variant="h6" textAlign="center" sx={{ mt: 2 }}>
-                            Player Results
-                          </Typography>
-                          <Grid container spacing={1.5} justifyContent="center">
-                            {matchingRevealed.results.map((result) => (
-                              <Grid item key={result.playerId}>
-                                <Chip
-                                  label={`${result.playerName}: ${result.correctCount}/${room.activeMatchingBoard?.left.length} (+${result.points})`}
-                                  color={result.correctCount > 0 ? "success" : "default"}
-                                  sx={resultBubbleSx}
-                                />
-                              </Grid>
-                            ))}
-                          </Grid>
                         </Stack>
                       )}
                     </Stack>
@@ -822,24 +809,6 @@ export default function SpectatePage() {
                                 : " (exact!)"}
                             </Typography>
                           )}
-                          <Typography variant="h6" textAlign="center">
-                            Player Answers
-                          </Typography>
-                          <Grid container spacing={1.5} justifyContent="center">
-                            {mathRevealed.submissions.map((sub) => (
-                              <Grid item key={sub.playerId}>
-                                <Chip
-                                  label={
-                                    sub.value !== null
-                                      ? `${sub.playerName}: ${sub.expression} = ${sub.value} (+${sub.points})`
-                                      : `${sub.playerName}: ${sub.expression} (invalid)`
-                                  }
-                                  color={sub.points > 0 ? "success" : "default"}
-                                  sx={resultBubbleSx}
-                                />
-                              </Grid>
-                            ))}
-                          </Grid>
                         </Stack>
                       )}
                     </Stack>
@@ -1066,22 +1035,8 @@ export default function SpectatePage() {
             </Grid>
 
             <Grid item xs={12} md={4}>
-              <Paper elevation={1} sx={{ p: 2, borderRadius: 3 }}>
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                  Scoreboard
-                </Typography>
-                {sortedPlayers.length === 0 ? (
-                  <Typography color="text.secondary" sx={{ py: 2 }}>
-                    No players yet.
-                  </Typography>
-                ) : (
-                  <List dense>
-                    {sortedPlayers.map((player, index) => (
-                      <SpectatorScoreRow key={player.id} player={player} rank={index + 1} />
-                    ))}
-                  </List>
-                )}
-              </Paper>
+              <SpectatorSidebar players={sortedPlayers} results={sidebarResults}
+                resultKey={`${room.code}-${room.round}-${room.currentQuestionIndex}`} />
             </Grid>
           </Grid>
         )}

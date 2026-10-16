@@ -440,7 +440,7 @@ export class RoomManager {
 
       const finalists = sortedByScore.slice(0, 2);
       internal.associationsFinalists = finalists;
-      this.beginAssociationsBoard(internal, 0, finalists[0].id);
+      this.beginAssociationsBoard(internal, 0, finalists[1].id);
       internal.public.gameStarted = true;
       return { ok: true, room: internal.public };
     }
@@ -737,7 +737,7 @@ export class RoomManager {
     if (isAssociations) {
       const finalists = internal.associationsFinalists ?? [];
       // Alternate who opens the first field of each subsequent board.
-      const startingPlayerId = finalists[nextIndex % 2]?.id ?? finalists[0]?.id;
+      const startingPlayerId = finalists[(nextIndex + 1) % 2]?.id ?? finalists[0]?.id;
       this.beginAssociationsBoard(internal, nextIndex, startingPlayerId);
       return { room: internal.public, roundEnded: false };
     }

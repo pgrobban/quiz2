@@ -83,7 +83,7 @@ const io = new Server<
 const rooms = new RoomManager();
 
 /** Max simultaneous *playing* participants per room; spectators are unlimited. */
-const MAX_PLAYERS_PER_ROOM = 4;
+const MAX_PLAYERS_PER_ROOM = 5;
 
 io.on("connection", (socket) => {
   console.log(`socket connected: ${socket.id}`);
