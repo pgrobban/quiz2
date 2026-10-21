@@ -53,6 +53,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import GroupedSelectionList from "../components/GroupedSelectionList";
 import { tileSx, TILE_BACKGROUND, TILE_TEXT, inkOnColor, answerTileSx } from "../lib/tileStyles";
 import { namedColor } from "../lib/pairColors";
 import MatchingPreview, { useMatchingPreview } from "../components/MatchingPreview";
@@ -620,8 +621,8 @@ export default function HostPage() {
                       Deselect All
                     </Button>
                   </Stack>
-                  <List dense>
-                    {availableQuestions.map((q) => (
+                  <GroupedSelectionList items={availableQuestions} groupSize={10} getLabel={(q) => q.text}>
+                    {(q) => (
                       <ListItem key={q.id} disablePadding>
                         <FormControlLabel
                           sx={{ px: 1, width: "100%" }}
@@ -634,8 +635,8 @@ export default function HostPage() {
                           label={q.text}
                         />
                       </ListItem>
-                    ))}
-                  </List>
+                    )}
+                  </GroupedSelectionList>
                   <Button
                     variant="contained"
                     fullWidth
@@ -678,8 +679,8 @@ export default function HostPage() {
                       Deselect All
                     </Button>
                   </Stack>
-                  <List dense>
-                    {availableMatchingBoards.map((board) => (
+                  <GroupedSelectionList items={availableMatchingBoards} groupSize={3} getLabel={(board) => board.title}>
+                    {(board) => (
                       <ListItem key={board.id} disablePadding>
                         <FormControlLabel
                           sx={{ px: 1, width: "100%" }}
@@ -694,8 +695,8 @@ export default function HostPage() {
                           label={`${board.title} (${board.pairs.length} pairs)`}
                         />
                       </ListItem>
-                    ))}
-                  </List>
+                    )}
+                  </GroupedSelectionList>
                   <Button
                     variant="contained"
                     fullWidth
@@ -743,8 +744,8 @@ export default function HostPage() {
                       Deselect All
                     </Button>
                   </Stack>
-                  <List dense>
-                    {availableAssociationsBoards.map((board) => (
+                  <GroupedSelectionList items={availableAssociationsBoards} groupSize={2} getLabel={(board) => board.title}>
+                    {(board) => (
                       <ListItem key={board.id} disablePadding>
                         <FormControlLabel
                           sx={{ px: 1, width: "100%" }}
@@ -759,8 +760,8 @@ export default function HostPage() {
                           label={`${board.title} (solution: ${board.finalSolution})`}
                         />
                       </ListItem>
-                    ))}
-                  </List>
+                    )}
+                  </GroupedSelectionList>
                   <Button
                     variant="contained"
                     fullWidth

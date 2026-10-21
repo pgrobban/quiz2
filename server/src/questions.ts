@@ -77,32 +77,32 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-2",
-      text: "If the price of something is three times what it was last year, what is the price increase in percent?",
-      options: ["100%", "200%", "300%", "400%"],
-      correctIndex: 1,
-    },
-    {
-      id: "quiz-3",
       text: "What is the only bird species that can fly backwards?",
       options: ["Hummingbird", "Sparrow", "Eagle", "Penguin"],
       correctIndex: 0,
     },
     {
-      id: "quiz-4",
+      id: "quiz-3",
       text: "In 'D-day', what does the D stand for?",
       options: ["Decision", "Deploy", "Day"],
       correctIndex: 2,
     },
     {
-      id: "quiz-5",
+      id: "quiz-4",
       text: "How many different colors are there in the classic bag of Ahlgrens bilar?",
       options: ["2", "3", "4", "5"],
       correctIndex: 1,
     },
     {
-      id: "quiz-6",
-      text: "Can turtles leave their shells?",
+      id: "quiz-5",
+      text: "Does Donald Duck have a dog named Pluto?",
       options: ["Yes", "No"],
+      correctIndex: 1,
+    },
+    {
+      id: "quiz-6",
+      text: "If the price of something is three times what it was last year, what is the price increase in percent?",
+      options: ["100%", "200%", "300%", "400%"],
       correctIndex: 1,
     },
     {

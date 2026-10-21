@@ -235,6 +235,7 @@ io.on("connection", (socket) => {
       // Give clients time to finish the letter-reveal animation before the
       // answer countdown actually starts ticking.
       setTimeout(() => {
+        if (rooms.getRoom(code)?.activeLetters !== result.letters) return;
         const updatedRoom = rooms.activateLettersTimer(code);
         if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
       }, LETTERS_REVEAL_ANIMATION_MS);
@@ -250,6 +251,7 @@ io.on("connection", (socket) => {
       // Same idea as the letters round: don't start the countdown until
       // the reveal animation has actually finished on clients.
       setTimeout(() => {
+        if (rooms.getRoom(code)?.activeMathChallenge !== result.challenge) return;
         const updatedRoom = rooms.activateMathTimer(code);
         if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
       }, MATH_REVEAL_ANIMATION_MS);
@@ -371,12 +373,14 @@ io.on("connection", (socket) => {
     } else if (result.letters) {
       io.to(code).emit("letters:started", { letters: result.letters });
       setTimeout(() => {
+        if (rooms.getRoom(code)?.activeLetters !== result.letters) return;
         const updatedRoom = rooms.activateLettersTimer(code);
         if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
       }, LETTERS_REVEAL_ANIMATION_MS);
     } else if (result.mathChallenge) {
       io.to(code).emit("math:started", result.mathChallenge);
       setTimeout(() => {
+        if (rooms.getRoom(code)?.activeMathChallenge !== result.mathChallenge) return;
         const updatedRoom = rooms.activateMathTimer(code);
         if (updatedRoom) io.to(code).emit("room:update", updatedRoom);
       }, MATH_REVEAL_ANIMATION_MS);

@@ -543,6 +543,10 @@ export default function JoinPage() {
   };
 
   const myScore = room?.players.find((p) => p.id === socket.id)?.score ?? 0;
+  const currentPlayer = room?.players.find((p) => p.id === socket.id);
+  const currentRank = currentPlayer && room
+    ? 1 + room.players.filter((p) => p.score > currentPlayer.score).length
+    : null;
   const sortedFinalPlayers = [...finalPlayers].sort((a, b) => b.score - a.score);
   const myRank =
     sortedFinalPlayers.findIndex((p) => p.id === socket.id) + 1 || null;
@@ -559,7 +563,9 @@ export default function JoinPage() {
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
+          justifyContent: ["question", "letters", "matching", "math"].includes(viewState)
+            ? "flex-start"
+            : "center",
           py: 4,
           gap: 3,
         }}
@@ -618,10 +624,26 @@ export default function JoinPage() {
 
         {viewState === "lobby" && room && (
           <Paper elevation={3} sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
-            <Typography variant="h5">You're in!</Typography>
+            {!room.gameStarted && <Typography variant="h5">You're in!</Typography>}
             <Typography color="text.secondary" sx={{ mt: 1 }}>
               Room {room.code}
             </Typography>
+            {room.gameStarted && currentRank !== null && (
+              <Stack alignItems="center" spacing={1} sx={{ mt: 2 }}>
+                <Chip
+                  label={`${myScore} pts`}
+                  sx={{
+                    bgcolor: "#000", color: "#4ade80", border: "2px solid #4ade80",
+                    fontSize: "1.5rem", fontWeight: 800, height: 48,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                />
+                <Typography variant="h6">
+                  You're currently {currentRank}{currentRank % 100 >= 11 && currentRank % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[currentRank % 10] ?? "th"}
+                  {currentRank === 1 ? " 🏆" : currentPlayer && room.players.every((p) => p.score >= currentPlayer.score) ? " 💪" : ""}
+                </Typography>
+              </Stack>
+            )}
             <Typography color="text.secondary" sx={{ mt: 2 }}>
               Waiting for the host to start the next round...
             </Typography>
@@ -632,9 +654,6 @@ export default function JoinPage() {
         {viewState === "introduction" && room?.roundInfo && (
           <Paper elevation={3} sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
             <Typography variant="h5">{room.roundInfo.title}</Typography>
-            <Typography color="text.secondary" sx={{ mt: 1 }}>
-              {room.roundInfo.description}
-            </Typography>
             {room.round === "associations" ? (
               <Typography color="text.secondary" sx={{ mt: 2 }}>
                 This round is played live by the top 2 players - watch the
@@ -642,7 +661,7 @@ export default function JoinPage() {
               </Typography>
             ) : (
               <Typography color="text.secondary" sx={{ mt: 2 }}>
-                Get ready - the host will start the questions shortly.
+                Look at the TVs for the tutorial!
               </Typography>
             )}
           </Paper>
@@ -653,15 +672,15 @@ export default function JoinPage() {
             <PlayerRoundHeader index={room.currentQuestionIndex} total={room.totalQuestions} score={myScore} />
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
-              {room.phaseDeadline !== null && (
-                <Box sx={{ mb: 2 }}>
+              <Box sx={{ mb: 2, minHeight: 34 }}>
+                {room.phaseDeadline !== null && (
                   <CountdownBar
                     deadline={room.phaseDeadline}
                     totalSeconds={15}
                     onExpire={() => setTimeExpired(true)}
                   />
-                </Box>
-              )}
+                )}
+              </Box>
               <Typography variant="h6" sx={{ mb: 2 }}>
                 {question.text}
               </Typography>
@@ -670,8 +689,8 @@ export default function JoinPage() {
                   const isSelected = selectedIndex === index;
                   const isRevealedCorrect =
                     correctIndex !== null && index === correctIndex;
-                   const isRevealedWrongSelection =
-                     correctIndex !== null && isSelected && index !== correctIndex;
+                  const isRevealedWrongSelection =
+                    correctIndex !== null && isSelected && index !== correctIndex;
                   const answerStyle = answerTileSx(
                     isSelected,
                     isRevealedCorrect ? "#4ade80" : isRevealedWrongSelection ? "#f87171" : undefined,
@@ -709,7 +728,7 @@ export default function JoinPage() {
                         // across questions. Hover must not imply selection.
                         "&:hover": { bgcolor: answerStyle.bgcolor, color: answerStyle.color },
                         justifyContent: "space-between", py: 1.5, minHeight: 56,
-                        fontSize: "1.2rem", fontWeight: 800,
+                        fontSize: "1.2rem", fontWeight: 600,
                         textAlign: "left", textTransform: "none",
                       }}
                     >
@@ -719,24 +738,25 @@ export default function JoinPage() {
                 })}
               </Stack>
 
-              {selectedIndex !== null && correctIndex === null && (
-                <Typography color="text.secondary" sx={{ mt: 2, textAlign: "center" }}>
-                  Answer submitted! Waiting for the host to reveal...
-                </Typography>
-              )}
-              {timeExpired && selectedIndex === null && correctIndex === null && (
-                <Alert severity="warning" sx={{ mt: 2 }}>
-                  Time's up! You didn't answer in time.
-                </Alert>
-              )}
-              {correctIndex !== null && (
-                <Alert
-                  severity={wasCorrect ? "success" : "error"}
-                  sx={{ mt: 2 }}
-                >
-                  {wasCorrect ? "Correct! +1 point" : "Not quite this time."}
-                </Alert>
-              )}
+              <Box sx={{ mt: 2, minHeight: 80 }} aria-live="polite">
+                {selectedIndex !== null && correctIndex === null && (
+                  <Typography color="text.secondary" sx={{ textAlign: "center" }}>
+                    Answer submitted! Waiting for the host to reveal...
+                  </Typography>
+                )}
+                {timeExpired && selectedIndex === null && correctIndex === null && (
+                  <Alert severity="warning">
+                    Time's up! You didn't answer in time.
+                  </Alert>
+                )}
+                {correctIndex !== null && (
+                  <Alert
+                    severity={wasCorrect ? "success" : "error"}
+                  >
+                    {wasCorrect ? "Correct! +1 point" : "Not quite this time."}
+                  </Alert>
+                )}
+              </Box>
             </Paper>
           </>
         )}
@@ -746,15 +766,15 @@ export default function JoinPage() {
             <PlayerRoundHeader index={room.currentQuestionIndex} total={room.totalQuestions} score={myScore} />
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
-              {room.phaseDeadline !== null && (
-                <Box sx={{ mb: 2 }}>
+              <Box sx={{ mb: 2, minHeight: 34 }}>
+                {room.phaseDeadline !== null && (
                   <CountdownBar
                     deadline={room.phaseDeadline}
                     totalSeconds={60}
                     onExpire={() => setTimeExpired(true)}
                   />
-                </Box>
-              )}
+                )}
+              </Box>
               <Box sx={{ py: 1 }}>
                 <LetterReveal
                   letters={activeLetters}
@@ -883,15 +903,15 @@ export default function JoinPage() {
             <PlayerRoundHeader index={room.currentQuestionIndex} total={room.totalQuestions} score={myScore} />
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
-              {room.phaseDeadline !== null && (
-                <Box sx={{ mb: 2 }}>
+              <Box sx={{ mb: 2, minHeight: 34 }}>
+                {room.phaseDeadline !== null && (
                   <CountdownBar
                     deadline={room.phaseDeadline}
                     totalSeconds={90}
                     onExpire={() => setTimeExpired(true)}
                   />
-                </Box>
-              )}
+                )}
+              </Box>
 
               <Typography variant="h6" textAlign="center" sx={{ mb: 1 }}>
                 {activeMatchingBoard.title}
@@ -1040,15 +1060,15 @@ export default function JoinPage() {
             <PlayerRoundHeader index={room.currentQuestionIndex} total={room.totalQuestions} score={myScore} />
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
-              {room.phaseDeadline !== null && (
-                <Box sx={{ mb: 2 }}>
+              <Box sx={{ mb: 2, minHeight: 34 }}>
+                {room.phaseDeadline !== null && (
                   <CountdownBar
                     deadline={room.phaseDeadline}
                     totalSeconds={90}
                     onExpire={() => setTimeExpired(true)}
                   />
-                </Box>
-              )}
+                )}
+              </Box>
 
               <Typography variant="body2" color="text.secondary" textAlign="center">
                 Target
@@ -1087,8 +1107,10 @@ export default function JoinPage() {
                   </Typography>
                   <Box
                     sx={{
-                      minHeight: 56,
-                      p: 1.5,
+                       minHeight: 56,
+                       p: 1.5,
+                      bgcolor: mathExpressionText ? "#FDE68A" : undefined,
+                      color: mathExpressionText ? "#111827" : undefined,
                       borderRadius: 2,
                       border: "1px dashed rgba(244, 244, 246, 0.28)",
                       display: "flex",
@@ -1096,7 +1118,7 @@ export default function JoinPage() {
                     }}
                   >
                     {mathExpressionText ? (
-                      <Typography sx={{ fontFamily: "monospace", fontSize: "1.1rem" }}>
+                      <Typography sx={{ fontFamily: "monospace", fontSize: "1.1rem", fontWeight: 800 }}>
                         {mathExpressionText}
                       </Typography>
                     ) : (

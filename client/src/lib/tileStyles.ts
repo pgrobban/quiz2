@@ -20,7 +20,7 @@ export const tileSx = {
 };
 
 /** Answer buttons keep their text readable even after input is locked. */
-export function answerTileSx(selected = false, background?: string, selectionColor = "#c084fc") {
+export function answerTileSx(selected = false, background?: string, selectionColor = "#FDE68A") {
   const bg = background ?? (selected ? selectionColor : TILE_BACKGROUND);
   return {
     bgcolor: bg,
