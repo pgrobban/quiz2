@@ -389,7 +389,8 @@ export default function SpectatePage() {
                     room.phase !== "finished" &&
                     room.round !== "letters" &&
                     room.round !== "matching" &&
-                    room.round !== "math" && (
+                    room.round !== "math" &&
+                    room.round !== "associations" && (
                       <Chip
                         label={`Should I know this? ${room.currentQuestionIndex + 1} / ${room.totalQuestions}`}
                         color="secondary"
@@ -834,7 +835,7 @@ export default function SpectatePage() {
                               label={p.name}
                               sx={{
                                 bgcolor: getPlayerColor(finalists, p.id),
-                                color: "#000",
+                                color: "#fff",
                                 fontWeight: 700,
                               }}
                             />
@@ -847,10 +848,7 @@ export default function SpectatePage() {
                           textAlign="center"
                           variant="h6"
                           sx={{
-                            color: getPlayerColor(
-                              finalists,
-                              room.associationsTurn.activePlayerId,
-                            ),
+                            color: "#fff",
                           }}
                         >
                           {finalists.find(
@@ -892,10 +890,9 @@ export default function SpectatePage() {
                                     p: 1,
                                     fontSize: { xs: "0.95rem", sm: "1.1rem", md: "1.25rem" },
                                     fontWeight: 700,
-                                    borderColor: finalSolved
-                                      ? (solverColor ?? "success.main")
-                                      : "warning.main",
-                                    borderWidth: 2,
+                                    borderColor: "#fbbf24",
+                                    borderWidth: 6,
+                                    boxShadow: "0 0 0 2px #111827",
                                     bgcolor: finalSolved
                                       ? (solverColor ?? TILE_BACKGROUND)
                                       : TILE_BACKGROUND,
@@ -907,17 +904,6 @@ export default function SpectatePage() {
                                   {finalSolved
                                     ? room.activeAssociationsBoard!.finalSolution
                                     : "???"}
-                                  {finalSolved && room.activeAssociationsBoard!.finalSolvedBy && (
-                                    <Typography
-                                      variant="caption"
-                                      sx={{ color: "inherit", fontWeight: 700 }}
-                                    >
-                                      solved by{" "}
-                                      {finalists.find(
-                                        (p) => p.id === room.activeAssociationsBoard!.finalSolvedBy
-                                      )?.name}
-                                    </Typography>
-                                  )}
                                 </Paper>
                               </Box>
                             );
@@ -949,14 +935,13 @@ export default function SpectatePage() {
                                     justifyContent: "center",
                                     textAlign: "center",
                                     p: 0.75,
-                                    fontSize: { xs: "0.85rem", sm: "1rem", md: "1.1rem" },
+                                    fontSize: { xs: "1rem", sm: "1.15rem", md: "1.25rem" },
                                     fontWeight: 700,
                                     ml: side === "left" ? `${indent}px` : 0,
                                     mr: side === "right" ? `${indent}px` : 0,
-                                    borderColor: col.solved
-                                      ? (solverColor ?? "success.main")
-                                      : "rgba(244, 244, 246, 0.16)",
-                                    borderWidth: col.solved ? 2 : 1,
+                                    borderColor: TILE_TEXT,
+                                    borderWidth: 5,
+                                    boxShadow: `0 0 0 2px ${TILE_BACKGROUND}`,
                                     bgcolor: col.solved
                                       ? (solverColor ?? TILE_BACKGROUND)
                                       : TILE_BACKGROUND,
@@ -964,14 +949,6 @@ export default function SpectatePage() {
                                   }}
                                 >
                                   {col.solved ? col.solution : col.label}
-                                  {col.solved && col.solvedBy && (
-                                    <Typography
-                                      variant="caption"
-                                      sx={{ color: "inherit", fontWeight: 700 }}
-                                    >
-                                      {finalists.find((p) => p.id === col.solvedBy)?.name}
-                                    </Typography>
-                                  )}
                                 </Paper>
                               );
                             }
@@ -987,7 +964,7 @@ export default function SpectatePage() {
                                   justifyContent: "center",
                                   textAlign: "center",
                                   p: 0.75,
-                                  fontSize: { xs: "0.85rem", sm: "1rem", md: "1.1rem" },
+                                  fontSize: { xs: "1rem", sm: "1.15rem", md: "1.25rem" },
                                   ml: side === "left" ? `${indent}px` : 0,
                                   mr: side === "right" ? `${indent}px` : 0,
                                   ...tileSx,

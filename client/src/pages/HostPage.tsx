@@ -1293,7 +1293,7 @@ export default function HostPage() {
                           label={p.name}
                           sx={{
                             bgcolor: getPlayerColor(finalists, p.id),
-                            color: "#000",
+                            color: "#fff",
                             fontWeight: 700,
                           }}
                         />
@@ -1313,10 +1313,7 @@ export default function HostPage() {
                       <Box
                         component="span"
                         sx={{
-                          color: getPlayerColor(
-                            finalists,
-                            room.associationsTurn.activePlayerId,
-                          ),
+                          color: "#fff",
                           fontWeight: 700,
                         }}
                       >
@@ -1376,10 +1373,18 @@ export default function HostPage() {
                                   handleOpenAssociationsField(clue.field)
                                 }
                                 sx={{
-                                  ...answerTileSx(false, col.solved ? solverColor : undefined),
-                                  justifyContent: "flex-start",
-                                  textTransform: "none",
-                                  fontSize: "0.75rem",
+                                   ...answerTileSx(false, col.solved ? solverColor : undefined),
+                                   border: "2px solid #6b7280",
+                                   "&.Mui-disabled": {
+                                     bgcolor: col.solved ? solverColor ?? TILE_BACKGROUND : TILE_BACKGROUND,
+                                     color: inkOnColor(col.solved ? solverColor ?? TILE_BACKGROUND : TILE_BACKGROUND),
+                                     border: "1px solid #9ca3af",
+                                   },
+                                   justifyContent: "flex-start",
+                                   textTransform: "none",
+                                   fontSize: "1rem",
+                                   fontWeight: 800,
+                                   minHeight: 44,
                                 }}
                               >
                                 {clue.text ?? `Open ${clue.field}`}
@@ -1410,8 +1415,13 @@ export default function HostPage() {
                             room.phase === "question" && (
                               <Button
                                 size="small"
+                                variant="contained"
                                 fullWidth
-                                sx={{ mt: 1 }}
+                                sx={{
+                                  mt: 1, minHeight: 44, fontWeight: 800,
+                                  bgcolor: TILE_TEXT, color: TILE_BACKGROUND,
+                                  "&:hover": { bgcolor: "#334155" },
+                                }}
                                 onClick={() =>
                                   handleStageGuess({
                                     type: "column",
@@ -1480,7 +1490,11 @@ export default function HostPage() {
                         <Button
                           variant="contained"
                           size="small"
-                          sx={{ mt: 1 }}
+                          sx={{
+                            mt: 1, minHeight: 48, fontSize: "1rem", fontWeight: 800,
+                            bgcolor: TILE_TEXT, color: TILE_BACKGROUND,
+                            "&:hover": { bgcolor: "#334155" },
+                          }}
                           onClick={() => handleStageGuess({ type: "final" })}
                         >
                           Guess Final Solution

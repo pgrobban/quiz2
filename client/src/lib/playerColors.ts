@@ -1,13 +1,8 @@
-import { colorForPairIndex } from "./pairColors";
+/** Deep player backgrounds chosen for high contrast with white text. */
+const PLAYER_COLORS = ["#1E40AF", "#991B1B"];
 
-/**
- * Assigns each player a stable, visually distinct color based on their
- * position in a given ordered list (e.g. the associations round's 2
- * finalists) - reuses the same palette as the matching round's pair
- * highlighting for visual consistency across the app.
- */
 export function colorForPlayerIndex(index: number): string {
-  return colorForPairIndex(index);
+  return PLAYER_COLORS[index % PLAYER_COLORS.length];
 }
 
 /**
