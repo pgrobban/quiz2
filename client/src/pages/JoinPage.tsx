@@ -670,21 +670,17 @@ export default function JoinPage() {
                   const isSelected = selectedIndex === index;
                   const isRevealedCorrect =
                     correctIndex !== null && index === correctIndex;
-                  const isRevealedWrongSelection =
-                    correctIndex !== null && isSelected && index !== correctIndex;
+                   const isRevealedWrongSelection =
+                     correctIndex !== null && isSelected && index !== correctIndex;
+                  const answerStyle = answerTileSx(
+                    isSelected,
+                    isRevealedCorrect ? "#4ade80" : isRevealedWrongSelection ? "#f87171" : undefined,
+                    "#FDE68A",
+                  );
 
                   return (
                     <Button
-                      // Keyed by question id (not just position) so React
-                      // mounts a brand-new DOM node per question instead of
-                      // patching the same button element in place. That
-                      // matters because this button becomes `disabled` the
-                      // instant it's tapped - on Chrome's mobile/touch
-                      // emulation, disabling an element mid-interaction can
-                      // leave its `:hover`/`:active` CSS state visually
-                      // "stuck" (blur() alone can't clear that, since it's
-                      // not actually about focus). A fresh DOM node has no
-                      // stale pseudo-class state to carry over.
+                      // Keep per-question button state separate.
                       key={`${question.id}-${index}`}
                       variant={isSelected ? "contained" : "outlined"}
                       color={
@@ -707,7 +703,15 @@ export default function JoinPage() {
                           <CancelIcon />
                         ) : undefined
                       }
-                      sx={{ ...answerTileSx(isSelected, isRevealedCorrect ? "#4ade80" : isRevealedWrongSelection ? "#f87171" : undefined), justifyContent: "space-between", py: 1.5, minHeight: 56, fontSize: "1.2rem", fontWeight: 800, textAlign: "left", textTransform: "none" }}
+                      sx={{
+                        ...answerStyle,
+                        // Touch browsers can retain hover at a screen position
+                        // across questions. Hover must not imply selection.
+                        "&:hover": { bgcolor: answerStyle.bgcolor, color: answerStyle.color },
+                        justifyContent: "space-between", py: 1.5, minHeight: 56,
+                        fontSize: "1.2rem", fontWeight: 800,
+                        textAlign: "left", textTransform: "none",
+                      }}
                     >
                       {option}
                     </Button>
