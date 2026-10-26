@@ -628,7 +628,7 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
       },
       {
         left: { id: "m3-l9", text: "Margot Robbie" },
-        right: { id: "m3-r9", text: "The Wolf of Wall Street" },
+        right: { id: "m3-r9", text: "Birds of Prey" },
       },
       {
         left: { id: "m3-l10", text: "Brad Pitt" },
@@ -723,8 +723,8 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
         right: { id: "m5-r9", text: "Spain" },
       },
       {
-        left: { id: "m5-l10", text: "Jaguar" },
-        right: { id: "m5-r10", text: "United Kingdom" },
+        left: { id: "m5-l10", text: "Skoda" },
+        right: { id: "m5-r10", text: "Czech Republic" },
       },
     ],
   },
