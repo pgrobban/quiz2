@@ -143,6 +143,11 @@ export default function HostPage() {
     socket.connect();
 
     function onConnect() {
+      if (socket.recovered) {
+        setConnectionState("ready");
+        setErrorMessage(null);
+        return;
+      }
       socket.emit("host:create-room", (response) => {
         if (response.ok) {
           setRoom(response.room);

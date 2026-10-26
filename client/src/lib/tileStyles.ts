@@ -27,7 +27,9 @@ export function answerTileSx(selected = false, background?: string, selectionCol
     color: inkOnColor(bg),
     border: "1px solid #d6cfc4",
     fontWeight: 700,
-    "&:hover": { bgcolor: background ?? selectionColor, color: inkOnColor(background ?? selectionColor) },
+    // Touch browsers may retain :hover at the last tapped screen position.
+    // Only application selection state should change a tile's background.
+    "&:hover": { bgcolor: bg, color: inkOnColor(bg) },
     "&.Mui-disabled": { bgcolor: bg, color: inkOnColor(bg), borderColor: "#d6cfc4" },
   };
 }

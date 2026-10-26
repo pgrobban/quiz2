@@ -74,6 +74,10 @@ const io = new Server<
   InterServerEvents,
   SocketData
 >(httpServer, {
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 10 * 60 * 1000,
+    skipMiddlewares: false,
+  },
   cors: {
     origin: corsOriginCheck,
     methods: ["GET", "POST"],
@@ -84,9 +88,18 @@ const rooms = new RoomManager();
 
 /** Max simultaneous *playing* participants per room; spectators are unlimited. */
 const MAX_PLAYERS_PER_ROOM = 5;
+const hostDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 io.on("connection", (socket) => {
   console.log(`socket connected: ${socket.id}`);
+  if (socket.recovered && socket.data.isHost && socket.data.roomCode) {
+    const code = socket.data.roomCode;
+    const timer = hostDisconnectTimers.get(code);
+    if (timer) clearTimeout(timer);
+    hostDisconnectTimers.delete(code);
+    const room = rooms.getRoom(code);
+    if (room) socket.emit("room:update", room);
+  }
 
   socket.on("host:create-room", (callback) => {
     const room = rooms.createRoom(socket.id);
@@ -94,6 +107,9 @@ io.on("connection", (socket) => {
     socket.data.isHost = true;
     socket.join(room.code);
     callback({ ok: true, room });
+    // A recoverable event establishes the packet offset even before any
+    // players join (acknowledgements alone do not establish one).
+    socket.emit("room:update", room);
   });
 
   socket.on("host:select-round", ({ code, round }, callback) => {
@@ -509,11 +525,23 @@ io.on("connection", (socket) => {
     handlePlayerLeave(socket.id, code);
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", (reason) => {
+    console.log(`socket disconnected: ${socket.id} (${reason})`);
     const code = socket.data.roomCode;
     if (!code) return;
 
     if (socket.data.isHost) {
+      if (reason !== "client namespace disconnect" && reason !== "server namespace disconnect") {
+        // Preserve the host's room while Socket.IO restores its identity,
+        // rooms, and missed events after a temporary network/sleep dropout.
+        const timer = setTimeout(() => {
+          hostDisconnectTimers.delete(code);
+          io.to(code).emit("room:closed", { reason: "The host did not reconnect." });
+          rooms.closeRoom(code);
+        }, 10 * 60 * 1000);
+        hostDisconnectTimers.set(code, timer);
+        return;
+      }
       io.to(code).emit("room:closed", { reason: "The host has disconnected." });
       rooms.closeRoom(code);
     } else if (!socket.data.isSpectator) {
