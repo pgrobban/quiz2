@@ -77,8 +77,8 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-2",
-      text: "What is the only bird species that can fly backwards?",
-      options: ["Hummingbird", "Sparrow", "Eagle", "Penguin"],
+      text: "How is our company name written on the elevator screens?",
+      options: ["Surikat AB", "Surikat Sweden AB"],
       correctIndex: 0,
     },
     {
@@ -194,7 +194,7 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-21",
-      text: "What is the number of the elevator closest to Gennie's reception?",
+      text: "What is the number of the elevator closest to Surikat's reception?",
       options: ["1", "2", "3", "4"],
       correctIndex: 0,
     },
@@ -271,9 +271,9 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-33",
-      text: "In the classic picture of Che Guevara, does he have facial hair?",
-      options: ["Yes", "No"],
-      correctIndex: 0,
+      text: "What is the largest desert in the world?",
+      options: ["Sahara", "Gobi", "Kalahari", "None of the above"],
+      correctIndex: 3,
     },
     {
       id: "quiz-34",
@@ -319,9 +319,9 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-41",
-      text: "How is our company name written on the elevator screens?",
-      options: ["Surikat AB", "Surikat Sweden AB"],
-      correctIndex: 1
+      text: "What is the only bird species that can fly backwards?",
+      options: ["Hummingbird", "Sparrow", "Eagle", "Penguin"],
+      correctIndex: 0,
     },
     {
       id: "quiz-42",
@@ -355,7 +355,7 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-47",
-      text: "Which came first...",
+      text: "Which of these came first?",
       options: ["The Bronze Age", "The Iron Age"],
       correctIndex: 0,
     },
@@ -964,7 +964,7 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
     pairs: [
       {
         left: { id: "m11-l1", text: "Matrix" },
-        right: { id: "m11-r1", text: "Movie" },
+        right: { id: "m11-r1", text: "2D array" },
       },
       {
         left: { id: "m11-l2", text: "Miraculix" },
