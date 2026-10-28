@@ -53,6 +53,7 @@ interface InternalRoom {
   associationsFinalists: Player[] | null;
   /** playerId -> whether their submitted answer for the *current* question was correct. */
   pendingAnswers: Map<string, boolean>;
+  quizCorrectCounts: Map<string, number>;
   /** playerId -> the word they've locked in for the current letters round. */
   letterSubmissions: Map<string, string>;
   /** playerId -> the pairs they've locked in so far for the current matching board. */
@@ -116,10 +117,13 @@ export type JudgeAssociationsGuessResult = { ok: true } | { ok: false; error: st
  * questions right, so it's weighted lighter than the more skill-testing
  * rounds to avoid front-loading the game with points. */
 const POINTS_PER_CORRECT_ANSWER = 1;
-/** Points awarded per letter of a valid word in the letters round - doubled for longer (8+ letter) words. */
-const POINTS_PER_LETTER = 1;
-const LONG_WORD_LENGTH_THRESHOLD = 8;
-const LONG_WORD_POINTS_MULTIPLIER = 2;
+const POINTS_FOR_PERFECT_QUIZ = 2;
+/** Valid words score their length below 8, then 8/10/12/14 for 8–11 letters, or 20 for 12. */
+function pointsForWordLength(length: number): number {
+  if (length === 12) return 20;
+  if (length >= 8) return 8 + 2 * (length - 8);
+  return length;
+}
 /** Points awarded per correctly-matched pair in the matching round, plus a bonus for a perfect board. */
 const POINTS_PER_CORRECT_PAIR = 1;
 const POINTS_FOR_PERFECT_MATCHING_BOARD = 2;
@@ -196,6 +200,7 @@ export class RoomManager {
       selectedAssociationsBoards: [],
       associationsFinalists: null,
       pendingAnswers: new Map(),
+      quizCorrectCounts: new Map(),
       letterSubmissions: new Map(),
       matchingGuesses: new Map(),
       mathSubmissions: new Map(),
@@ -419,6 +424,7 @@ export class RoomManager {
     internal.public.phase = "question";
     internal.public.currentQuestionIndex = 0;
     internal.public.answeredCount = 0;
+    internal.quizCorrectCounts.clear();
 
     if (internal.public.round === "matching") {
       const board = toPublicMatchingBoard(internal.selectedMatchingBoards[0]);
@@ -537,11 +543,7 @@ export class RoomManager {
       if (!word) continue;
 
       const valid = word.length >= 3 && canFormWord(word, letters) && isDictionaryWord(word);
-      const perLetterPoints =
-        word.length >= LONG_WORD_LENGTH_THRESHOLD
-          ? POINTS_PER_LETTER * LONG_WORD_POINTS_MULTIPLIER
-          : POINTS_PER_LETTER;
-      const points = valid ? word.length * perLetterPoints : 0;
+      const points = valid ? pointsForWordLength(word.length) : 0;
       if (points > 0) player.score += points;
 
       submissions.push({
@@ -811,6 +813,7 @@ export class RoomManager {
   revealAnswer(code: string): RevealResult | undefined {
     const internal = this.rooms.get(code);
     if (!internal) return undefined;
+    if (internal.public.phase !== "question") return undefined;
 
     const question = internal.selectedQuestions[internal.public.currentQuestionIndex];
     if (!question) return undefined;
@@ -823,7 +826,15 @@ export class RoomManager {
     for (const [playerId, wasCorrect] of internal.pendingAnswers) {
       if (!wasCorrect) continue;
       const player = internal.public.players.find((p) => p.id === playerId);
-      if (player) player.score += POINTS_PER_CORRECT_ANSWER;
+      if (player) {
+        player.score += POINTS_PER_CORRECT_ANSWER;
+        const correctCount = (internal.quizCorrectCounts.get(playerId) ?? 0) + 1;
+        internal.quizCorrectCounts.set(playerId, correctCount);
+        if (internal.public.currentQuestionIndex === internal.selectedQuestions.length - 1 &&
+            correctCount === internal.selectedQuestions.length) {
+          player.score += POINTS_FOR_PERFECT_QUIZ;
+        }
+      }
     }
     internal.pendingAnswers.clear();
 

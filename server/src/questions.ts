@@ -21,21 +21,21 @@ export const ROUND_CATALOG: Record<GameRound, RoundInfo> = {
   quiz: {
     id: "quiz",
     title: "Should I know this?",
-    description: "Classic multiple-choice trivia. 1p for each correct answer",
+    description: "Classic multiple-choice trivia. 1p for each correct answer, +2p for getting every question in the round correct. Answer is automatically locked in.",
     tutorial: { type: "video", url: "/tutorials/quiz.mp4" },
   },
   letters: {
     id: "letters",
     title: "You took the words out of my mouth",
     description:
-      "Make the longest word you can from the given letters. If your word is in the dictionary, you get 1p per letter, double points for long words (≥ 8 letters). Don't forget to lock in your answer!",
+      "Make the longest word you can from the given letters. Valid words under 8 letters score 1p per letter; 8-11 letters score 8, 10, 12, or 14p; 12 letters score 20p. Don't forget to lock in your answer!",
     tutorial: { type: "video", url: "/tutorials/letters.mp4" },
   },
   matching: {
     id: "matching",
     title: "Will you be my match?",
     description:
-      "Match pairs of related items before the timer runs out. 1p for each correct pair, +2 for a perfect board.",
+      "Match pairs of related items before the timer runs out. 1p for each correct pair, +2 for a perfect board. Answer will be locked in when time runs out.",
     tutorial: { type: "video", url: "/tutorials/matching.mp4" },
   },
   math: {
