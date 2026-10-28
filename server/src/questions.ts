@@ -83,15 +83,15 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-3",
-      text: "In 'D-day', what does the D stand for?",
-      options: ["Decision", "Deploy", "Day"],
-      correctIndex: 2,
-    },
-    {
-      id: "quiz-4",
       text: "How many different colors are there in the classic bag of Ahlgrens bilar?",
       options: ["2", "3", "4", "5"],
       correctIndex: 1,
+    },
+    {
+      id: "quiz-4",
+      text: "In 'D-day', what does the D stand for?",
+      options: ["Decision", "Deploy", "Day"],
+      correctIndex: 2,
     },
     {
       id: "quiz-5",
@@ -128,7 +128,7 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-10",
-      text: "Which degree burn is deeper?",
+      text: "Which degree burn is more dangerous?",
       options: ["First", "Third"],
       correctIndex: 1,
     },
@@ -170,9 +170,9 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-17",
-      text: "What is the natural gas pipeline called?",
-      options: ["North Stream", "Nord Stream"],
-      correctIndex: 1,
+      text: "How many moons does Mars have?",
+      options: ["0", "1", "2", "3"],
+      correctIndex: 2,
     },
     {
       id: "quiz-18",
@@ -295,7 +295,7 @@ export const QUESTION_BANK: Record<GameRound, QuestionWithAnswer[]> = {
     },
     {
       id: "quiz-37",
-      text: "Is 'Air Force Two' the callsign of a US Air Force aircraft carrying the US vice president?",
+      text: "Is there an air traffic control callsign called 'Air Force Two'?",
       options: ["Yes", "No"],
       correctIndex: 0,
     },
@@ -776,47 +776,47 @@ export const MATCHING_BANK: MatchingBoardBankItem[] = [
   },
   {
     id: "match-8",
-    title: "Countries and their capitals",
+    title: "Years in history",
     pairs: [
       {
-        left: { id: "m8-l1", text: "Australia" },
-        right: { id: "m8-r1", text: "Canberra" },
+        left: { id: "m8-l1", text: "Start of WW2" },
+        right: { id: "m8-r1", text: "1939" },
       },
       {
-        left: { id: "m8-l2", text: "Cambodia" },
-        right: { id: "m8-r2", text: "Phnom Penh" },
+        left: { id: "m8-l2", text: "Battle of Hastings" },
+        right: { id: "m8-r2", text: "1066" },
       },
       {
-        left: { id: "m8-l3", text: "Turkey" },
-        right: { id: "m8-r3", text: "Ankara" },
+        left: { id: "m8-l3", text: "Moon landing" },
+        right: { id: "m8-r3", text: "1969" },
       },
       {
-        left: { id: "m8-l4", text: "Niger" },
-        right: { id: "m8-r4", text: "Niamey" },
+        left: { id: "m8-l4", text: "Fall of the Berlin Wall" },
+        right: { id: "m8-r4", text: "1989" },
       },
       {
-        left: { id: "m8-l5", text: "Paraguay" },
-        right: { id: "m8-r5", text: "Asunción" },
+        left: { id: "m8-l5", text: "Start of the French Revolution" },
+        right: { id: "m8-r5", text: "1789" },
       },
       {
-        left: { id: "m8-l6", text: "Nicaragua" },
-        right: { id: "m8-r6", text: "Managua" },
+        left: { id: "m8-l6", text: "Start of US civil war" },
+        right: { id: "m8-r6", text: "1861" },
       },
       {
-        left: { id: "m8-l7", text: "Haiti" },
-        right: { id: "m8-r7", text: "Port-au-Prince" },
+        left: { id: "m8-l7", text: "Fall of the Soviet Union" },
+        right: { id: "m8-r7", text: "1991" },
       },
       {
-        left: { id: "m8-l8", text: "Trinidad and Tobago" },
-        right: { id: "m8-r8", text: "Port of Spain" },
+        left: { id: "m8-l8", text: "9/11 attacks" },
+        right: { id: "m8-r8", text: "2001" },
       },
       {
-        left: { id: "m8-l9", text: "Chad" },
-        right: { id: "m8-r9", text: "N'Djamena" },
+        left: { id: "m8-l9", text: "Google founded" },
+        right: { id: "m8-r9", text: "1998" },
       },
       {
-        left: { id: "m8-l10", text: "Bhutan" },
-        right: { id: "m8-r10", text: "Thimphu" },
+        left: { id: "m8-l10", text: "Last emperor of China reign ended" },
+        right: { id: "m8-r10", text: "1912" },
       },
     ],
   },

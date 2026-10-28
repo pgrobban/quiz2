@@ -937,7 +937,17 @@ export default function JoinPage() {
                         badgeContent={pairIndex + 1}
                         invisible={pairIndex === -1}
                         color={isIncorrect ? "error" : "secondary"}
-                        sx={{ width: "100%" }}
+                        sx={{
+                          width: "100%",
+                          "& .MuiBadge-badge": {
+                            minWidth: 30, height: 30, borderRadius: "50%",
+                            fontSize: "1rem", fontWeight: 800,
+                            fontVariantNumeric: "tabular-nums",
+                            bgcolor: isIncorrect ? "#991B1B" : "#111827",
+                            color: "#fff", border: "2px solid #FDE68A",
+                            boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                          },
+                        }}
                       >
                         <Button
                           variant={
@@ -950,7 +960,7 @@ export default function JoinPage() {
                           sx={{
                             ...answerTileSx(pairIndex !== -1 || isStaged,
                               matchingRevealed ? namedColor(activeMatchingBoard.right.find((r) => r.id === matchingRevealed.correctPairs.find((p) => p.leftId === item.id)?.rightId)?.text ?? "") ?? undefined : undefined, "#FDE68A"),
-                            fontSize: "1rem", fontWeight: 800, lineHeight: 1.4, minHeight: 48, py: 1, textTransform: "none",
+                            fontSize: "1rem", fontWeight: 600, lineHeight: 1.4, minHeight: 48, py: 1, textTransform: "none",
                             ...(isIncorrect && {
                               "&.Mui-disabled": {
                                 color: namedColor(activeMatchingBoard.right.find((r) => r.id === matchingRevealed?.correctPairs.find((p) => p.leftId === item.id)?.rightId)?.text ?? "")
@@ -986,7 +996,17 @@ export default function JoinPage() {
                         badgeContent={pairIndex + 1}
                         invisible={pairIndex === -1}
                         color={isIncorrect ? "error" : "secondary"}
-                        sx={{ width: "100%" }}
+                        sx={{
+                          width: "100%",
+                          "& .MuiBadge-badge": {
+                            minWidth: 30, height: 30, borderRadius: "50%",
+                            fontSize: "1rem", fontWeight: 800,
+                            fontVariantNumeric: "tabular-nums",
+                            bgcolor: isIncorrect ? "#991B1B" : "#111827",
+                            color: "#fff", border: "2px solid #FDE68A",
+                            boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                          },
+                        }}
                       >
                         <Button
                           variant={
@@ -1107,8 +1127,8 @@ export default function JoinPage() {
                   </Typography>
                   <Box
                     sx={{
-                       minHeight: 56,
-                       p: 1.5,
+                      minHeight: 56,
+                      p: 1.5,
                       bgcolor: mathExpressionText ? "#FDE68A" : undefined,
                       color: mathExpressionText ? "#111827" : undefined,
                       borderRadius: 2,
