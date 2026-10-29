@@ -1,5 +1,7 @@
 // Shared types between server and client for the quiz game.
 
+export const MAX_PLAYERS_PER_ROOM = 8;
+
 export interface Player {
   id: string; // socket id
   name: string;

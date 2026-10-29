@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { MAX_PLAYERS_PER_ROOM } from "../../shared/types";
 import express from "express";
 import cors from "cors";
 import { Server } from "socket.io";
@@ -87,7 +88,7 @@ const io = new Server<
 const rooms = new RoomManager();
 
 /** Max simultaneous *playing* participants per room; spectators are unlimited. */
-const MAX_PLAYERS_PER_ROOM = 5;
+// Shared with the host's player-count display.
 const hostDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 io.on("connection", (socket) => {

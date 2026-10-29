@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { MAX_PLAYERS_PER_ROOM } from "../../../shared/types";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -551,7 +552,7 @@ export default function HostPage() {
                   sx={{ mb: 1 }}
                 >
                   <Typography variant="h6">Players</Typography>
-                  <Chip label={`${room.players.length} / 5`} color="primary" />
+                  <Chip label={`${room.players.length} / ${MAX_PLAYERS_PER_ROOM}`} color="primary" />
                 </Stack>
 
                 {room.players.length === 0 ? (
