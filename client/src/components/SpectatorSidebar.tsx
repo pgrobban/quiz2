@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Box, Chip, List, Paper, Stack, Typography } from "@mui/material";
+import { Box, Chip, List, Paper, Portal, Stack, Typography } from "@mui/material";
 import type { Player } from "../../../shared/types";
 import SpectatorScoreRow from "./SpectatorScoreRow";
 
@@ -63,6 +63,12 @@ export default function SpectatorSidebar({ players, results, resultKey }: {
 
   return (
     <Stack ref={root} spacing={2}>
+      <Paper sx={{ p: 2, borderRadius: 3 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>Scoreboard</Typography>
+        {!players.length ? <Typography color="text.secondary">No players yet.</Typography> : (
+          <List dense>{players.map((p, index) => <SpectatorScoreRow key={p.id} player={p} rank={index + 1} />)}</List>
+        )}
+      </Paper>
       {shownResults.length > 0 && (
         <Paper sx={{ p: 2, borderRadius: 3 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>Player Results</Typography>
@@ -77,12 +83,7 @@ export default function SpectatorSidebar({ players, results, resultKey }: {
           </Stack>
         </Paper>
       )}
-      <Paper sx={{ p: 2, borderRadius: 3 }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>Scoreboard</Typography>
-        {!players.length ? <Typography color="text.secondary">No players yet.</Typography> : (
-          <List dense>{players.map((p, index) => <SpectatorScoreRow key={p.id} player={p} rank={index + 1} />)}</List>
-        )}
-      </Paper>
+      <Portal>
       {flights.map((flight) => (
         <Box key={`${flight.playerId}-${flight.points}`} sx={{
           "--points-dx": `${flight.dx}px`, "--points-dy": `${flight.dy}px`,
@@ -98,6 +99,7 @@ export default function SpectatorSidebar({ players, results, resultKey }: {
           "@media (prefers-reduced-motion: reduce)": { display: "none" },
         }}>+{flight.points}</Box>
       ))}
+      </Portal>
     </Stack>
   );
 }

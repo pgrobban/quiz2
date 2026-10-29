@@ -489,6 +489,7 @@ export default function SpectatePage() {
                       <Box
                         component="video"
                         src={room.roundInfo.tutorial.url}
+                        controls
                         autoPlay
                         muted
                         playsInline
