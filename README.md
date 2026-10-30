@@ -8,7 +8,7 @@ can be watched
 [on the official Youtube channel](https://www.youtube.com/@SlagalicaRTS/videos).
 
 While the original TV show is always played with 2 people, this version allows
-up to **8 players** can join each room. The associations finale is played by the
+up to **8 players** to join each room. The associations finale is played by the
 **top two scoring players** using spoken answers judged by the host. Refer to the
 [Rounds and scoring](#rounds) section for more gameplay details.
 
