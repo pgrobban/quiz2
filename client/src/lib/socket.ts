@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+import { updateServerClock } from "./serverClock";
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -35,4 +36,36 @@ export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
     upgrade: false,
   },
 );
+
+let clockTimer: ReturnType<typeof setInterval> | undefined;
+let syncGeneration = 0;
+function synchronizeClock() {
+  if (!socket.connected) return;
+  const generation = ++syncGeneration;
+  let bestRoundTrip = Infinity;
+  // Prefer the lowest-latency sample to reduce polling/network jitter.
+  for (let sample = 0; sample < 3; sample++) {
+    const sentAt = performance.now();
+    socket.timeout(5000).emit("clock:sync", (error, serverTime) => {
+      const receivedAt = performance.now();
+      if (error || generation !== syncGeneration || !socket.connected) return;
+      if (receivedAt - sentAt < bestRoundTrip) {
+        bestRoundTrip = receivedAt - sentAt;
+        updateServerClock(serverTime, sentAt, receivedAt);
+      }
+    });
+  }
+}
+socket.on("connect", () => {
+  synchronizeClock();
+  clearInterval(clockTimer);
+  clockTimer = setInterval(synchronizeClock, 30000);
+});
+socket.on("disconnect", () => {
+  ++syncGeneration;
+  clearInterval(clockTimer);
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") synchronizeClock();
+});
 

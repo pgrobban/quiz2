@@ -1,23 +1,24 @@
 import { useEffect, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import type { RoomState } from "../../../shared/types";
+import { serverNow, subscribeServerClock } from "../lib/serverClock";
 
 export function useMatchingPreview(room: RoomState | null): boolean {
   const deadline = room?.round === "matching" && room.phase === "question"
     ? room.activeMatchingBoard?.previewEndsAt ?? 0
     : 0;
-  const [finishedDeadline, setFinishedDeadline] = useState(0);
+  const [now, setNow] = useState(serverNow);
 
   useEffect(() => {
     if (!deadline) return;
-    const timer = window.setTimeout(
-      () => setFinishedDeadline(deadline),
-      Math.max(0, deadline - Date.now()),
-    );
-    return () => window.clearTimeout(timer);
+    const refresh = () => setNow(serverNow());
+    refresh();
+    const unsubscribe = subscribeServerClock(refresh);
+    const timer = window.setInterval(refresh, 100);
+    return () => { window.clearInterval(timer); unsubscribe(); };
   }, [deadline]);
 
-  return deadline > Date.now() && finishedDeadline !== deadline;
+  return deadline > now;
 }
 
 export default function MatchingPreview({ title }: { title: string }) {

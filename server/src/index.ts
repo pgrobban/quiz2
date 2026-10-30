@@ -93,6 +93,7 @@ const hostDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const playerSessions = new Map<string, Map<string, string>>();
 
 io.on("connection", (socket) => {
+  socket.on("clock:sync", (callback) => callback(Date.now()));
   console.log(`socket connected: ${socket.id}`);
   if (socket.recovered && socket.data.isHost && socket.data.roomCode) {
     const code = socket.data.roomCode;

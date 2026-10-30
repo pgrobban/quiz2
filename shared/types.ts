@@ -247,6 +247,7 @@ export interface AssociationsTurnState {
 }
 
 export interface ClientToServerEvents {
+  "clock:sync": (callback: (serverTime: number) => void) => void;
   "player:resume": (
     payload: { code: string; token: string },
     callback: (response: { ok: true; room: RoomState } | { ok: false; error: string }) => void

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Box, LinearProgress, Typography } from "@mui/material";
+import { serverNow, isClockSynchronized, subscribeServerClock } from "../lib/serverClock";
 
 interface CountdownBarProps {
   /** Epoch ms when the countdown ends. */
@@ -19,18 +20,21 @@ export default function CountdownBar({
   totalSeconds,
   onExpire,
 }: CountdownBarProps) {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(serverNow);
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 150);
-    return () => clearInterval(interval);
+    const refresh = () => setNow(serverNow());
+    refresh();
+    const unsubscribe = subscribeServerClock(refresh);
+    const interval = setInterval(refresh, 100);
+    return () => { clearInterval(interval); unsubscribe(); };
   }, [deadline]);
 
   const totalMs = totalSeconds * 1000;
   const remainingMs = Math.max(0, deadline - now);
   const elapsedRatio = totalMs > 0 ? Math.min(1, 1 - remainingMs / totalMs) : 1;
   const secondsLeft = Math.ceil(remainingMs / 1000);
-  const expired = remainingMs <= 0;
+  const expired = isClockSynchronized() && remainingMs <= 0;
 
   useEffect(() => {
     if (expired) onExpire?.();
@@ -51,7 +55,7 @@ export default function CountdownBar({
         color="text.secondary"
         sx={{ display: "block", textAlign: "right", mt: 0.5 }}
       >
-        {expired ? "Time's up!" : `${secondsLeft}s`}
+        {!isClockSynchronized() ? "Synchronizing timer…" : expired ? "Time's up!" : `${secondsLeft}s`}
       </Typography>
     </Box>
   );
