@@ -250,6 +250,30 @@ export class RoomManager {
     return internal.public;
   }
 
+  resumePlayer(code: string, oldId: string, newId: string): RoomState | undefined {
+    const internal = this.rooms.get(code);
+    const player = internal?.public.players.find((p) => p.id === oldId);
+    if (!internal || !player) return undefined;
+    if (oldId === newId) return internal.public;
+    player.id = newId;
+    for (const map of [internal.pendingAnswers, internal.letterSubmissions,
+      internal.matchingGuesses, internal.mathSubmissions, internal.quizCorrectCounts] as Map<string, unknown>[]) {
+      if (map.has(oldId)) { map.set(newId, map.get(oldId)); map.delete(oldId); }
+    }
+    const turn = internal.public.associationsTurn;
+    if (turn) {
+      for (const finalist of turn.finalists) if (finalist.id === oldId) finalist.id = newId;
+      if (turn.activePlayerId === oldId) turn.activePlayerId = newId;
+      if (turn.openerPlayerId === oldId) turn.openerPlayerId = newId;
+    }
+    const board = internal.public.activeAssociationsBoard;
+    if (board) {
+      for (const col of board.columns) if (col.solvedBy === oldId) col.solvedBy = newId;
+      if (board.finalSolvedBy === oldId) board.finalSolvedBy = newId;
+    }
+    return internal.public;
+  }
+
   isNameTaken(code: string, name: string): boolean {
     const internal = this.rooms.get(code);
     if (!internal) return false;

@@ -54,6 +54,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import ConnectionStatus from "../components/ConnectionStatus";
 import GroupedSelectionList from "../components/GroupedSelectionList";
 import { tileSx, TILE_BACKGROUND, TILE_TEXT, inkOnColor, answerTileSx } from "../lib/tileStyles";
 import { namedColor } from "../lib/pairColors";
@@ -488,6 +489,7 @@ export default function HostPage() {
 
   return (
     <Container maxWidth="sm">
+      <ConnectionStatus active={!!room} />
       <Box
         sx={{
           minHeight: "100vh",

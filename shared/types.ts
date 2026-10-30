@@ -247,6 +247,10 @@ export interface AssociationsTurnState {
 }
 
 export interface ClientToServerEvents {
+  "player:resume": (
+    payload: { code: string; token: string },
+    callback: (response: { ok: true; room: RoomState } | { ok: false; error: string }) => void
+  ) => void;
   "host:create-room": (
     callback: (response: { ok: true; room: RoomState } | { ok: false; error: string }) => void
   ) => void;
@@ -286,7 +290,7 @@ export interface ClientToServerEvents {
   ) => void;
 
   "player:join-room": (
-    payload: { code: string; name: string },
+    payload: { code: string; name: string; token?: string },
     callback: (response: { ok: true; room: RoomState } | { ok: false; error: string }) => void
   ) => void;
 

@@ -90,6 +90,7 @@ const rooms = new RoomManager();
 /** Max simultaneous *playing* participants per room; spectators are unlimited. */
 // Shared with the host's player-count display.
 const hostDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const playerSessions = new Map<string, Map<string, string>>();
 
 io.on("connection", (socket) => {
   console.log(`socket connected: ${socket.id}`);
@@ -100,6 +101,11 @@ io.on("connection", (socket) => {
     hostDisconnectTimers.delete(code);
     const room = rooms.getRoom(code);
     if (room) socket.emit("room:update", room);
+  }
+  if (socket.recovered && !socket.data.isHost && socket.data.roomCode) {
+    const room = rooms.getRoom(socket.data.roomCode);
+    if (room) socket.emit("room:update", room);
+    else socket.emit("room:closed", { reason: "This game room has closed." });
   }
 
   socket.on("host:create-room", (callback) => {
@@ -155,7 +161,21 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("player:join-room", ({ code, name }, callback) => {
+  socket.on("player:resume", ({ code, token }, callback) => {
+    const oldId = playerSessions.get(code)?.get(token);
+    const room = oldId ? rooms.resumePlayer(code, oldId, socket.id) : undefined;
+    if (!room) { callback({ ok: false, error: "Your previous game session is no longer available." }); return; }
+    playerSessions.get(code)!.set(token, socket.id);
+    socket.data.roomCode = code;
+    socket.data.playerName = room.players.find((p) => p.id === socket.id)?.name;
+    socket.join(code);
+    callback({ ok: true, room });
+    io.to(code).emit("room:update", room);
+    const question = rooms.getCurrentQuestion(code);
+    if (question) socket.emit("game:question", { index: room.currentQuestionIndex, total: room.totalQuestions, question });
+  });
+
+  socket.on("player:join-room", ({ code, name, token }, callback) => {
     const trimmedName = name.trim();
     const room = rooms.getRoom(code);
 
@@ -213,6 +233,11 @@ io.on("connection", (socket) => {
     socket.data.playerName = trimmedName;
     socket.join(code);
 
+    if (token) {
+      if (!playerSessions.has(code)) playerSessions.set(code, new Map());
+      playerSessions.get(code)!.set(token, socket.id);
+    }
+
     callback({ ok: true, room: updatedRoom });
     io.to(code).emit("room:update", updatedRoom);
   });
@@ -237,6 +262,7 @@ io.on("connection", (socket) => {
       question: rooms.getCurrentQuestion(code),
       correctIndex: rooms.getCurrentCorrectIndex(code),
     });
+    socket.emit("room:update", room);
   });
 
   socket.on("host:start-question", ({ code }) => {
@@ -546,20 +572,19 @@ io.on("connection", (socket) => {
       io.to(code).emit("room:closed", { reason: "The host has disconnected." });
       rooms.closeRoom(code);
     } else if (!socket.data.isSpectator) {
-      const room = rooms.getRoom(code);
-      // During the associations round, non-finalist players (and even
-      // finalists between turns) aren't actively using their phones at all
-      // - they're just watching the host/spectate screens - so it's common
-      // for a phone to fall asleep and drop its socket connection. Don't
-      // punish that by removing them (and wiping their score) from the
-      // room; just let the stale connection go and leave their scoreboard
-      // entry as-is. An explicit "Leave Game" still removes them normally.
-      if (room?.round === "associations") return;
-      handlePlayerLeave(socket.id, code);
+      // Sleeping phones must not lose their scores or finalist eligibility.
+      // Socket.IO recovery restores the same identity within ten minutes.
+      // Only a deliberate departure removes a player's scoreboard entry.
+      if (reason === "client namespace disconnect" || reason === "server namespace disconnect") {
+        handlePlayerLeave(socket.id, code);
+      }
     }
   });
 
   function handlePlayerLeave(playerId: string, code: string) {
+    for (const [token, id] of playerSessions.get(code) ?? []) {
+      if (id === playerId) playerSessions.get(code)!.delete(token);
+    }
     const updatedRoom = rooms.removePlayer(code, playerId);
     if (updatedRoom) {
       io.to(code).emit("room:update", updatedRoom);

@@ -35,6 +35,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import ConnectionStatus from "../components/ConnectionStatus";
 import SpectatorSidebar, { type SpectatorResult } from "../components/SpectatorSidebar";
 import MatchingPreview, { useMatchingPreview } from "../components/MatchingPreview";
 import {
@@ -313,6 +314,7 @@ export default function SpectatePage() {
 
   return (
     <Container maxWidth="lg">
+      <ConnectionStatus active={!!room} />
       <Box sx={{ minHeight: "100vh", py: 4 }}>
         <Button
           startIcon={<ArrowBackIcon />}

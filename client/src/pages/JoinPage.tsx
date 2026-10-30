@@ -36,6 +36,7 @@ import type {
 import { socket } from "../lib/socket";
 import LetterReveal from "../components/LetterReveal";
 import CountdownBar from "../components/CountdownBar";
+import ConnectionStatus from "../components/ConnectionStatus";
 import { answerTileSx, inkOnColor } from "../lib/tileStyles";
 import { namedColor } from "../lib/pairColors";
 import PlayerRoundHeader from "../components/PlayerRoundHeader";
@@ -131,6 +132,38 @@ export default function JoinPage() {
   }, []);
 
   useEffect(() => {
+    function onConnect() {
+      if (socket.recovered) return;
+      const saved = sessionStorage.getItem("player-session");
+      if (!saved) return;
+      const session = JSON.parse(saved) as { code: string; token: string };
+      socket.emit("player:resume", session, (response) => {
+        if (response.ok) {
+          setRoom(response.room);
+          onRoomUpdate(response.room);
+          if (response.room.phase === "finished") {
+            onFinished({ players: response.room.players });
+            return;
+          }
+          if (response.room.phase === "lobby" || response.room.phase === "introduction") return;
+          if (response.room.round === "associations") {
+            setViewState("introduction");
+            return;
+          }
+          if (response.room.round === "letters" && response.room.activeLetters) {
+            onLettersStarted({ letters: response.room.activeLetters });
+          } else if (response.room.round === "math" && response.room.activeMathChallenge) {
+            onMathStarted(response.room.activeMathChallenge);
+          } else if (response.room.round === "matching" && response.room.activeMatchingBoard) {
+            setActiveMatchingBoard(response.room.activeMatchingBoard);
+            setViewState("matching");
+          }
+        } else {
+          sessionStorage.removeItem("player-session");
+          setErrorMessage(response.error);
+        }
+      });
+    }
     function onRoomUpdate(updatedRoom: RoomState) {
       setRoom(updatedRoom);
       if (updatedRoom.phase === "lobby") {
@@ -248,12 +281,14 @@ export default function JoinPage() {
     }
 
     function onRoomClosed(payload: { reason: string }) {
+      sessionStorage.removeItem("player-session");
       setErrorMessage(payload.reason);
       setViewState("form");
       setRoom(null);
       socket.disconnect();
     }
 
+    socket.on("connect", onConnect);
     socket.on("room:update", onRoomUpdate);
     socket.on("game:question", onQuestion);
     socket.on("game:reveal", onReveal);
@@ -267,7 +302,12 @@ export default function JoinPage() {
     socket.on("game:time-up", onTimeUp);
     socket.on("room:closed", onRoomClosed);
 
+    if (sessionStorage.getItem("player-session")) {
+      if (socket.connected) onConnect();
+      else socket.connect();
+    }
     return () => {
+      socket.off("connect", onConnect);
       socket.off("room:update", onRoomUpdate);
       socket.off("game:question", onQuestion);
       socket.off("game:reveal", onReveal);
@@ -315,14 +355,16 @@ export default function JoinPage() {
     };
 
     const emitJoin = () => {
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, "0")).join("");
       socket.emit(
         "player:join-room",
-        { code: trimmedCode, name: trimmedName },
+        { code: trimmedCode, name: trimmedName, token },
         (response) => {
           if (settled) return;
           settled = true;
           cleanup();
           if (response.ok) {
+            sessionStorage.setItem("player-session", JSON.stringify({ code: trimmedCode, token }));
             setRoom(response.room);
             setErrorMessage(null);
             setViewState("lobby");
@@ -387,6 +429,7 @@ export default function JoinPage() {
       setShowLeaveConfirm(true);
       return;
     }
+    sessionStorage.removeItem("player-session");
     if (room) {
       socket.emit("player:leave-room", { code: room.code });
     }
@@ -395,6 +438,7 @@ export default function JoinPage() {
   };
 
   const handleConfirmLeave = () => {
+    sessionStorage.removeItem("player-session");
     setShowLeaveConfirm(false);
     if (room) {
       socket.emit("player:leave-room", { code: room.code });
@@ -558,6 +602,7 @@ export default function JoinPage() {
 
   return (
     <Container maxWidth="sm">
+      <ConnectionStatus active={!!room} />
       <Box
         sx={{
           minHeight: "100vh",
