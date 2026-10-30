@@ -6,7 +6,7 @@ React, Vite, and Material UI. The game rounds are based off the Serbian TV game
 show "TV Slagalica", which has two players playing head-to-head. New episodes
 can be watched
 [on the official Youtube channel](https://www.youtube.com/@SlagalicaRTS/videos).
-This version does not implement some of rounds such as Skočko (Mastermind).
+This version does not implement some of the rounds seen on TV such as Skočko (Mastermind).
 
 While the original TV show is always played with 2 people, this version allows
 up to **8 players** to join each room. The associations finale is played by the
